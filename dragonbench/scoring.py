@@ -21,17 +21,21 @@ def parse_model_json(answer: Any) -> tuple[dict[str, Any] | None, str | None]:
     text = str(answer).strip()
     if not text:
         return None, "empty answer"
+    if re.search(r"</?Answer\b", text):
+        return None, "answer tag must be lowercase exactly: <answer>JSON</answer>"
+    tag_matches = re.findall(r"<answer>\s*(\{.*?\})\s*</answer>", text, flags=re.DOTALL)
+    if tag_matches:
+        tagged_json = tag_matches[-1]
+        try:
+            parsed = json.loads(tagged_json)
+            return parsed if isinstance(parsed, dict) else None, None if isinstance(parsed, dict) else "top-level JSON must be an object"
+        except json.JSONDecodeError as exc:
+            return None, f"answer XML contained invalid JSON: {exc}"
     try:
         parsed = json.loads(text)
         return parsed if isinstance(parsed, dict) else None, None if isinstance(parsed, dict) else "top-level JSON must be an object"
-    except json.JSONDecodeError:
-        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
-        if not match:
-            return None, "answer is not valid JSON"
-        try:
-            return json.loads(match.group(1)), None
-        except json.JSONDecodeError as exc:
-            return None, f"fenced JSON parse failed: {exc}"
+    except json.JSONDecodeError as exc:
+        return None, f"answer must be exact raw JSON or include a final lowercase <answer>JSON</answer> block: {exc}"
 
 
 def score_answer(card: dict[str, Any], answer: Any) -> ScoreResult:

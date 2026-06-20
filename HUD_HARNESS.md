@@ -1,6 +1,6 @@
 # DragonBench HUD Harness
 
-This repo exposes the 100-card seed eval as a HUD v6 taskset.
+This repo exposes the 100-card scoreable eval as a HUD v6 taskset.
 
 HUD references used:
 
@@ -23,15 +23,23 @@ hud eval tasks.py claude
 
 Replace `claude` with any model string supported by the HUD gateway.
 
+Model answers should end with a lowercase final-answer block in this shape:
+
+```xml
+<answer>{"field": "value"}</answer>
+```
+
+The scorer accepts exact raw JSON for local tooling, but HUD prompts ask for the lowercase XML wrapper. For HUD answers, zero lowercase blocks, uppercase tags, or malformed JSON in the final block score `0`. If multiple lowercase `<answer>` blocks are present, only the last one is scored.
+
 ## Current Eval Status
 
 The file `eval/dragonbench_eval_v0.scoreable.jsonl` has 100 scoreable cards:
 
-- 20 `DragonGeneParse`
+- 20 `DragonGeneParseIntrons`
+- 20 `DragonAnolePromoterExpression`
+- 20 `DragonProteinFolding`
 - 20 `DragonTFBind`
-- 20 `DragonEnhancerTissue`
-- 20 `DragonVariantEffect`
-- 20 `DragonPhenotypeGene`
+- 20 `DragonRNAFolding`
 
 All cards have `hidden_answer.status: verified` and produce real rewards.
 
@@ -56,6 +64,8 @@ Scoring appends JSONL events to `logs/score_events.jsonl` by default. Each event
 - secondary scorers
 - subscores
 - scorer info
+- scoring explanation with the exact reward formula
+- format contract
 - answer preview, truncated to 500 characters, for HUD task runs
 
 Hidden answers are not logged by the HUD harness. Local `scripts/score_answers.py` does not log answer previews by default, because local answer files may contain oracle/debug answers. Use `--log-answer-preview` only for non-secret model answers.
@@ -75,10 +85,27 @@ The scorer lives in `dragonbench/scoring.py`.
 
 Task scoring:
 
-- `DragonGeneParse`: exon interval F1, splice donor F1, splice acceptor F1, optional CDS interval F1
+- `DragonGeneParseIntrons`: intron interval F1 at IoU >= 0.8, boundary score, intron count accuracy
+- `DragonAnolePromoterExpression`: NDCG over tissue ranking, top-1 tissue accuracy, Spearman rank correlation
+- `DragonProteinFolding`: residue-contact F1, contact precision/recall, contact count accuracy
 - `DragonTFBind`: interval F1 at IoU >= 0.5, center-distance score, confidence presence
-- `DragonEnhancerTissue`: multi-label probability score with average precision and Brier-style calibration
-- `DragonVariantEffect`: Spearman rank correlation with Pearson tie-breaker
-- `DragonPhenotypeGene`: multi-label probability score over candidate phenotype terms
+- `DragonRNAFolding`: base-pair F1, exact dot-bracket match, length validity
 
 The scoring functions are deterministic, JSON-only, and avoid LLM judging.
+
+## HUD Environment Grade Payload
+
+The environment yields a structured grade frame, not only a bare float:
+
+```json
+{
+  "score": 0.6,
+  "status": "scored",
+  "subscores": {"base_pair_f1": 0.75},
+  "info": {"matched_base_pairs": 3},
+  "scoring_explanation": "Reward = 0.80 * base_pair_f1 + ...",
+  "format_contract": "Model output is parsed from the last lowercase <answer>...</answer> block..."
+}
+```
+
+This should make the HUD trace/result pane explain how the reward was computed for each run.

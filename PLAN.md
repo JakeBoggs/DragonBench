@@ -25,9 +25,9 @@ A question can enter the locked eval only if it has:
 
 ## Eval Tasks
 
-### 1. DragonGeneParse
+### 1. DragonGeneParseIntrons
 
-Goal: predict gene structure from DNA sequence.
+Goal: identify intron intervals from genomic DNA sequence.
 
 Primary sources:
 
@@ -45,21 +45,67 @@ Inputs:
 
 Outputs:
 
-- exon intervals
-- splice donor positions
-- splice acceptor positions
-- optional CDS intervals
+- intron intervals
 
 Scoring:
 
-- splice junction F1
-- exon interval F1 at exact boundary or tolerance
-- per-base exon/intron MCC
-- CDS frame validity
+- intron interval F1 at IoU >= 0.8
+- intron boundary score
+- intron count accuracy
 
-### 2. DragonTFBind
+### 2. DragonAnolePromoterExpression
 
-Goal: predict transcription-factor binding intervals or motif windows from sequence.
+Goal: predict Anolis tissue expression ranking from the 2000 bp sequence upstream of CDS start.
+
+Primary sources:
+
+- Anolis expression atlas / reannotation datasets
+- Ensembl Anolis genome annotation
+- NCBI RefSeq reptile annotations where needed
+
+Inputs:
+
+- species: `Anolis carolinensis`
+- 2000 bp promoter sequence upstream of CDS start
+- candidate tissue list
+
+Outputs:
+
+- ordered tissues, highest predicted expression first
+
+Scoring:
+
+- NDCG across all candidate tissues
+- top-1 tissue accuracy
+- Spearman rank correlation
+
+### 3. DragonProteinFolding
+
+Goal: predict residue-residue contacts from protein sequence.
+
+Primary sources:
+
+- PDB
+- CASP/CAMEO-style held-out structure targets
+
+Inputs:
+
+- protein sequence
+- whether MSA/templates are allowed
+
+Outputs:
+
+- residue contact pairs with confidence
+
+Scoring:
+
+- contact F1
+- contact precision/recall
+- contact count accuracy
+
+### 4. DragonTFBind
+
+Goal: predict transcription-factor binding intervals from sequence.
 
 Primary sources:
 
@@ -70,7 +116,6 @@ Primary sources:
 Inputs:
 
 - species
-- cell type when applicable
 - TF name or motif ID
 - one or more DNA sequences
 
@@ -83,96 +128,33 @@ Outputs:
 Scoring:
 
 - interval F1 at IoU >= 0.5
-- AUPRC over candidate windows
 - distance to motif center or ChIP-seq summit
-- calibration / Brier score for confidence
+- confidence presence/calibration
 
-### 3. DragonEnhancerTissue
+### 5. DragonRNAFolding
 
-Goal: predict tissue-specific regulatory activity from noncoding DNA.
-
-Primary sources:
-
-- VISTA Enhancer Browser
-- ENCODE cCREs / SCREEN
-- FANTOM5 enhancer/promoter activity
-- reptile limb ATAC-seq or conserved noncoding element datasets when source records are verified
-
-Inputs:
-
-- species
-- developmental stage or cell/tissue context
-- candidate enhancer sequence
-- candidate tissue labels
-
-Outputs:
-
-- active/inactive probability
-- multi-label tissue activity probabilities
-
-Scoring:
-
-- multi-label AUROC/AUPRC
-- exact active/inactive accuracy
-- tissue ontology similarity
-- calibration error
-
-### 4. DragonVariantEffect
-
-Goal: predict functional effects of protein or splice-affecting variants.
+Goal: predict RNA secondary structure from sequence.
 
 Primary sources:
 
-- ProteinGym
-- MaveDB
-- massively parallel splicing assays for splice-specific variants
+- bpRNA
+- ArchiveII
+- Rfam
 
 Inputs:
 
-- wild-type sequence
-- variant list
-- assay definition
+- RNA sequence
+- pseudoknot policy
 
 Outputs:
 
-- predicted score per variant
-- optional functional/neutral class
+- dot-bracket secondary structure
 
 Scoring:
 
-- Spearman rank correlation
-- Pearson correlation
-- top-k enrichment
-- binary AUROC/AUPRC when labels are thresholded
-
-### 5. DragonPhenotypeGene
-
-Goal: predict phenotype labels from gene perturbation data.
-
-Primary sources:
-
-- IMPC / KOMP mouse knockout phenotypes
-- MGI genotype-phenotype annotations
-- ZFIN zebrafish phenotypes and expression
-- FlyBase Drosophila allele/gene phenotypes
-
-Inputs:
-
-- species
-- gene sequence or protein sequence
-- perturbation type
-- candidate phenotype terms
-
-Outputs:
-
-- multi-label phenotype probabilities
-
-Scoring:
-
-- macro AUROC/AUPRC
-- precision@k
-- recall@k
-- ontology-aware similarity where available
+- base-pair F1
+- exact dot-bracket match
+- output length validity
 
 ## Reptile and Non-Reptile Mix
 
@@ -184,13 +166,13 @@ Recommended long-term locked-eval balance:
 - 25 reptile-specific examples
 - 15 cross-species or comparative examples
 
-Current seed balance:
+Current scoreable bootstrap balance:
 
-- 60 non-reptile examples
-- 12 reptile-specific examples
-- 28 cross-species or comparative examples
+- 29 non-reptile examples
+- 26 reptile-specific examples
+- 45 cross-species or comparative examples
 
-The seed set is conservative about reptile-specific labels because reptile phenotype and variant-effect sources are much thinner than human, mouse, fly, zebrafish, and protein assay sources. Reptile-specific cards should be increased only after exact accessions and labels are verified.
+The scoreable bootstrap set uses deterministic controls with source-family metadata. It should be replaced progressively with source-extracted records while preserving the same schemas and scorers.
 
 Reptile-specific examples should initially focus on:
 
@@ -242,11 +224,11 @@ examples/
 
 `eval/dragonbench_eval_v0.scoreable.jsonl` is the HUD-facing bootstrap dataset. It contains 100 scoreable cards with verified hidden answers:
 
-- 20 `DragonGeneParse`
+- 20 `DragonGeneParseIntrons`
+- 20 `DragonAnolePromoterExpression`
+- 20 `DragonProteinFolding`
 - 20 `DragonTFBind`
-- 20 `DragonEnhancerTissue`
-- 20 `DragonVariantEffect`
-- 20 `DragonPhenotypeGene`
+- 20 `DragonRNAFolding`
 
 This file exists so the harness can run end-to-end immediately. The earlier `seed` file is only a source-curation scaffold and should not be used for model evaluation.
 
@@ -254,10 +236,11 @@ This file exists so the harness can run end-to-end immediately. The earlier `see
 
 When scaling beyond the 100-question eval:
 
-- split GeneParse by chromosome or genomic locus, not random exon
-- split VariantEffect by protein family or assay, not random variant
+- split GeneParseIntrons by chromosome or genomic locus, not random intron
+- split AnolePromoterExpression by gene family or held-out tissue/gene sets
+- split ProteinFolding by protein family or fold, not random contact
 - split TFBind by TF, cell type, or genomic region
-- split PhenotypeGene by orthology group or phenotype family
+- split RNAFolding by RNA family, not random sequence
 - hold out whole reptile species when possible
 
 The 100-question eval must never be used for SFT or RL training.

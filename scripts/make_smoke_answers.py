@@ -17,7 +17,26 @@ def main() -> None:
         answer = {}
         hidden = card["hidden_answer"]["answer"]
         task = card["task"]
-        if task == "DragonGeneParse":
+        if task == "DragonGeneParseIntrons":
+            answer = {
+                "introns": hidden["introns"],
+            }
+        elif task == "DragonAnolePromoterExpression":
+            answer = {
+                "ordered_tissues": hidden["ordered_tissues"],
+            }
+        elif task == "DragonProteinFolding":
+            answer = {
+                "contacts": [
+                    {**item, "probability": 0.95}
+                    for item in hidden["contacts"]
+                ],
+            }
+        elif task == "DragonRNAFolding":
+            answer = {
+                "dot_bracket": hidden["dot_bracket"],
+            }
+        elif task == "DragonGeneParse":
             answer = {
                 "exons": hidden["exons"],
                 "splice_donors": hidden["splice_donors"],
@@ -47,7 +66,7 @@ def main() -> None:
             answer = {
                 "phenotypes": hidden["phenotypes"],
             }
-        rows.append({"id": card["id"], "answer": json.dumps(answer)})
+        rows.append({"id": card["id"], "answer": f"<answer>{json.dumps(answer)}</answer>"})
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w") as f:
         for row in rows:

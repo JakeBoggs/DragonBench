@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from dragonbench.io import load_jsonl
-from dragonbench.logging import log_score_event
+from dragonbench.logging import log_score_event, make_score_event
 from dragonbench.prompts import render_prompt
 from dragonbench.scoring import score_answer
 
@@ -23,8 +23,16 @@ async def dragonbench_question(question_id: str):
     card = cards[question_id]
     answer = yield render_prompt(card)
     result = score_answer(card, answer)
-    log_score_event(card, result, answer)
-    yield result.reward
+    log_score_event(card, result, answer, emit_stdout=True)
+    event = make_score_event(card, result, include_answer_preview=False)
+    yield {
+        "score": result.reward,
+        "status": result.status,
+        "subscores": result.subscores,
+        "info": result.info,
+        "scoring_explanation": event["scoring_explanation"],
+        "format_contract": event["format_contract"],
+    }
 
 
 tasks = Taskset(

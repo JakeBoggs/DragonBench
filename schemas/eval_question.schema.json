@@ -21,11 +21,11 @@
     "task": {
       "type": "string",
       "enum": [
-        "DragonGeneParse",
+        "DragonGeneParseIntrons",
+        "DragonAnolePromoterExpression",
+        "DragonProteinFolding",
         "DragonTFBind",
-        "DragonEnhancerTissue",
-        "DragonVariantEffect",
-        "DragonPhenotypeGene"
+        "DragonRNAFolding"
       ]
     },
     "status": {

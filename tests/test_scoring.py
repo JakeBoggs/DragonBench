@@ -106,6 +106,40 @@ def test_komodo_protein_fold_scores_pdb_string():
     assert result.subscores["structure_validity"] == 1.0
 
 
+def test_protein_folding_low_coverage_caps_reward():
+    card = {
+        "task": "KomodoProteinFold",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "coordinates": [
+                    {"residue_index": i, "x": float(i), "y": 0.0, "z": 0.0}
+                    for i in range(221)
+                ]
+            },
+        },
+    }
+    pdb = "\n".join([
+        "ATOM      1  N   GLY A   1      -1.000   0.000   0.000  1.00  0.00           N",
+        "ATOM      2  CA  GLY A   1       0.000   0.000   0.000  1.00  0.00           C",
+        "ATOM      3  C   GLY A   1       0.500   0.000   0.000  1.00  0.00           C",
+        "ATOM      4  O   GLY A   1       0.750   0.000   0.000  1.00  0.00           O",
+        "ATOM      5  N   GLY A   2       0.000  -1.000   0.000  1.00  0.00           N",
+        "ATOM      6  CA  GLY A   2       1.000   0.000   0.000  1.00  0.00           C",
+        "ATOM      7  C   GLY A   2       1.500   0.000   0.000  1.00  0.00           C",
+        "ATOM      8  O   GLY A   2       1.750   0.000   0.000  1.00  0.00           O",
+        "ATOM      9  N   GLY A   3       1.000   0.000  -1.000  1.00  0.00           N",
+        "ATOM     10  CA  GLY A   3       2.000   0.000   0.000  1.00  0.00           C",
+        "ATOM     11  C   GLY A   3       2.500   0.000   0.000  1.00  0.00           C",
+        "ATOM     12  O   GLY A   3       2.750   0.000   0.000  1.00  0.00           O",
+        "END",
+    ])
+    result = score_answer(card, {"pdb": pdb})
+    assert result.status == "scored"
+    assert result.subscores["coordinate_coverage"] == 3 / 221
+    assert result.reward < 0.02
+
+
 def test_tf_bind_scores_binding_probabilities():
     card = {
         "task": "DragonTFBind",

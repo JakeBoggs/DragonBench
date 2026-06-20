@@ -1,4 +1,5 @@
 import os
+import hashlib
 from pathlib import Path
 from urllib.parse import quote
 
@@ -20,24 +21,77 @@ PROTEIN_TASKS = {"KomodoProteinFold"}
 env = Environment(name="dragonbench-eval-v0")
 
 
-def make_visualization_info(card):
+def answer_digest(answer):
+    return hashlib.sha256(str(answer).encode("utf-8", errors="replace")).hexdigest()[:12]
+
+
+def make_trace_report(card, answer):
+    from scripts.build_protein_3d_report import build_single_task_report
+
+    report_dir = Path(os.environ.get("DRAGONBENCH_TRACE_VIZ_DIR", "reports/hud"))
+    report_path = report_dir / f"{card['id']}-{answer_digest(answer)}.html"
+    build_single_task_report(card, answer, report_path, model_name="HUD Model")
+    return report_path
+
+
+def make_visualization_info(card, answer=None):
     if card.get("task") not in PROTEIN_TASKS:
         return {}
     base_url = os.environ.get("DRAGONBENCH_VIZ_BASE_URL", "").strip()
     if not base_url:
-        return {}
-    report_path = os.environ.get("DRAGONBENCH_PROTEIN_VIZ_REPORT", "reports/protein_folding_compare.html").strip()
-    report_path = report_path or "reports/protein_folding_compare.html"
-    url = f"{base_url.rstrip('/')}/{report_path.lstrip('/')}?task_id={quote(card['id'], safe='')}"
-    return {
+        return {
+            "visualization_status": "disabled",
+            "visualization_reason": "Set DRAGONBENCH_VIZ_BASE_URL to emit a protein viewer link.",
+        }
+    try:
+        report_path = make_trace_report(card, answer) if answer is not None else None
+        source = "hud_model_answer"
+    except Exception as exc:
+        report_path = None
+        source = "static_fallback"
+        report_error = str(exc)
+    if report_path is None:
+        report_path = os.environ.get("DRAGONBENCH_PROTEIN_VIZ_REPORT", "reports/protein_folding_3d.html").strip()
+        report_path = report_path or "reports/protein_folding_3d.html"
+    report_path_str = str(report_path)
+    url = f"{base_url.rstrip('/')}/{report_path_str.lstrip('/')}?task_id={quote(card['id'], safe='')}"
+    is_local = base_url.startswith(("http://127.0.0.1", "http://localhost", "http://0.0.0.0"))
+    info = {
+        "visualization_status": "local_only" if is_local else "public_url",
+        "visualization_mode": "single_answer",
+        "visualization_source": source,
         "visualization_url": url,
         "visualization": {
-            "kind": "protein_structure_comparison",
+            "kind": "protein_single_answer_structure",
             "viewer": "3dmol",
+            "mode": "single_answer",
             "task_id": card["id"],
             "url": url,
+            "source": source,
+            "note": (
+                "Localhost URLs only work in a browser on the same machine running the report server."
+                if is_local else
+                "Public URL should be reachable from the HUD website and other browsers."
+            ),
         }
     }
+    if source == "static_fallback":
+        info["visualization_error"] = report_error
+        info["visualization"]["note"] += " Trace-specific report generation failed; this link uses the configured single-answer fallback report."
+    return info
+
+
+def make_result_content(card, result, info):
+    lines = [
+        f"{card['id']} {card['task']} scored {result.reward:.3f} ({result.status})."
+    ]
+    if "visualization_url" in info:
+        lines.append(f"Protein visualization: {info['visualization_url']}")
+        if info.get("visualization_status") == "local_only":
+            lines.append("Visualization status: local-only URL; open it from the same machine running the report server.")
+    elif info.get("visualization_status") == "disabled":
+        lines.append(f"Protein visualization disabled: {info['visualization_reason']}")
+    return "\n".join(lines)
 
 
 @env.template()
@@ -49,9 +103,10 @@ async def dragonbench_question(question_id: str):
     log_score_event(card, result, answer, emit_stdout=True)
     event = make_score_event(card, result, include_answer_preview=False)
     info = dict(result.info)
-    info.update(make_visualization_info(card))
+    info.update(make_visualization_info(card, answer))
     yield {
         "score": result.reward,
+        "content": make_result_content(card, result, info),
         "status": result.status,
         "subscores": result.subscores,
         "info": info,

@@ -175,13 +175,20 @@ def score_protein_folding(pred: dict[str, Any], expected: dict[str, Any]) -> Sco
     stats = distance_matrix_stats(pred_coords, true_coords, common)
     coverage = len(common) / max(len(true_coords), 1)
     drmsd_score = 1.0 / (1.0 + stats["drmsd"] / 2.0)
-    reward = 0.80 * drmsd_score + 0.10 * coverage + 0.05 * structure_info["validity"] + 0.05 * structure_info["backbone_completeness"]
+    local_structure_score = (
+        0.90 * drmsd_score
+        + 0.05 * structure_info["validity"]
+        + 0.05 * structure_info["backbone_completeness"]
+    )
+    reward = coverage * local_structure_score
     return ScoreResult(
         clamp01(reward),
         "scored",
         {
             "distance_matrix_rmsd_score": drmsd_score,
             "coordinate_coverage": coverage,
+            "coverage_weighted_structure_score": clamp01(reward),
+            "local_structure_score": clamp01(local_structure_score),
             "structure_validity": structure_info["validity"],
             "backbone_atom_completeness": structure_info["backbone_completeness"],
             "drmsd_angstrom": stats["drmsd"],

@@ -92,11 +92,12 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
         )
     if task == "KomodoProteinFold":
         return (
-            "Reward = 0.80 * distance_matrix_rmsd_score + 0.10 * coordinate_coverage "
-            "+ 0.05 * structure_validity + 0.05 * backbone_atom_completeness. "
+            "Reward = coordinate_coverage * local_structure_score. "
+            "local_structure_score = 0.90 * distance_matrix_rmsd_score + 0.05 * structure_validity + 0.05 * backbone_atom_completeness. "
             "distance_matrix_rmsd_score = 1 / (1 + dRMSD / 2), where dRMSD compares all pairwise C-alpha distances and is rotation/translation invariant. "
             f"Values: dRMSD_score={s.get('distance_matrix_rmsd_score', 0):.3f}, "
             f"coverage={s.get('coordinate_coverage', 0):.3f}, "
+            f"local_structure={s.get('local_structure_score', 0):.3f}, "
             f"validity={s.get('structure_validity', 0):.3f}, "
             f"backbone={s.get('backbone_atom_completeness', 0):.3f}, "
             f"dRMSD={s.get('drmsd_angstrom', 0):.3f}, "

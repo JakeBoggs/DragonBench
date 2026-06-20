@@ -207,6 +207,7 @@ HTML_TEMPLATE = """<!doctype html>
 
   function fmt(value, digits = 3) {
     if (value === undefined || value === null || Number.isNaN(value)) return 'n/a';
+    if (typeof value === 'string') return value;
     return Number(value).toFixed(digits);
   }
 
@@ -297,6 +298,8 @@ HTML_TEMPLATE = """<!doctype html>
         ['Reward', task.reward],
         ['dRMSD score', task.subscores.distance_matrix_rmsd_score],
         ['Coverage', task.subscores.coordinate_coverage],
+        ['Overlap residues', task.info && task.info.overlap],
+        ['Pred / True residues', task.info ? `${task.info.n_pred || 0} / ${task.info.n_true || 0}` : null],
         ['dRMSD', task.subscores.drmsd_angstrom],
         ['Mean dist err', task.subscores.mean_distance_error_angstrom],
       ];
@@ -307,7 +310,21 @@ HTML_TEMPLATE = """<!doctype html>
   }
 
   function updateModeChrome() {
-    if (DATA.mode !== 'compare') return;
+    if (DATA.mode !== 'compare') {
+      const modelName = DATA.model_a_name || 'Model';
+      document.title = 'DragonBench Protein Folding Single-Answer Report';
+      document.querySelector('h1').textContent = 'DragonBench Protein Folding Single-Answer Report';
+      document.getElementById('panelATitle').textContent = 'Ground Truth';
+      document.getElementById('panelASubtitle').textContent = 'reference structure';
+      document.getElementById('panelBTitle').textContent = `${modelName} Prediction`;
+      document.getElementById('panelBSubtitle').textContent = 'submitted model answer';
+      document.getElementById('panelCTitle').textContent = `${modelName} vs Ground Truth`;
+      document.getElementById('panelCSubtitle').textContent = 'green target, orange prediction';
+      document.getElementById('legendPrediction').lastChild.textContent = `${modelName} prediction`;
+      document.getElementById('modeNote').textContent =
+        'Single-answer 3Dmol.js viewer for one submitted protein fold. Drag to rotate, scroll to zoom, right-drag to pan. Offset Overlay slightly separates the prediction from ground truth for readability; turn it off for exact aligned geometry.';
+      return;
+    }
     document.title = 'DragonBench Protein Folding Model Comparison';
     document.querySelector('h1').textContent = 'DragonBench Protein Folding Model Comparison';
     document.getElementById('panelATitle').textContent = `${DATA.model_a_name} vs Ground Truth`;
@@ -360,7 +377,7 @@ HTML_TEMPLATE = """<!doctype html>
 
   function renderPrediction(viewer, task) {
     clearViewer(viewer);
-    if (task.predicted_structure) {
+    if (task.predicted_structure && !useCoordinateTrace(task.info)) {
       addStructureModel(viewer, task.predicted_structure, COLORS.prediction, 1.0, 'prediction');
       viewer.render();
       return;
@@ -382,11 +399,19 @@ HTML_TEMPLATE = """<!doctype html>
       drawTrace(viewer, task.target_coordinates, COLORS.target, 0.2, 0.08);
     }
     if (task.predicted_structure) {
-      addStructureModel(viewer, task.predicted_aligned_structure || task.predicted_structure, COLORS.prediction, 0.88, 'prediction', displayOffset(0.85));
+      if (useCoordinateTrace(task.info)) {
+        const offset = displayOffset(0.85);
+        const coords = task.predicted_aligned_coordinates || task.predicted_coordinates;
+        drawTrace(viewer, offsetCoords(coords, offset), COLORS.prediction, 0.3, 0.12);
+        addErrorLinks(viewer, task.target_coordinates, offsetCoords(coords, offset));
+      } else {
+        addStructureModel(viewer, task.predicted_aligned_structure || task.predicted_structure, COLORS.prediction, 0.88, 'prediction', displayOffset(0.85));
+      }
     } else if (task.predicted_coordinates && task.predicted_coordinates.length > 0) {
       const offset = displayOffset(0.85);
-      drawTrace(viewer, offsetCoords(task.predicted_coordinates, offset), COLORS.prediction, 0.3, 0.12);
-      addErrorLinks(viewer, task.target_coordinates, offsetCoords(task.predicted_coordinates, offset));
+      const coords = task.predicted_aligned_coordinates || task.predicted_coordinates;
+      drawTrace(viewer, offsetCoords(coords, offset), COLORS.prediction, 0.3, 0.12);
+      addErrorLinks(viewer, task.target_coordinates, offsetCoords(coords, offset));
     }
     viewer.render();
   }
@@ -398,12 +423,13 @@ HTML_TEMPLATE = """<!doctype html>
     } else {
       drawTrace(viewer, task.target_coordinates, COLORS.target, 0.18, 0.07);
     }
-    if (model.structure) {
+    if (model.structure && !useCoordinateTrace(model.info)) {
       addStructureModel(viewer, model.aligned_structure || model.structure, modelColor, 0.9, 'prediction', displayOffset(0.85));
     } else if (model.coordinates && model.coordinates.length > 0) {
       const offset = displayOffset(0.85);
-      drawTrace(viewer, offsetCoords(model.coordinates, offset), modelColor, 0.3, 0.12);
-      addErrorLinks(viewer, task.target_coordinates, offsetCoords(model.coordinates, offset));
+      const coords = model.aligned_coordinates || model.coordinates;
+      drawTrace(viewer, offsetCoords(coords, offset), modelColor, 0.3, 0.12);
+      addErrorLinks(viewer, task.target_coordinates, offsetCoords(coords, offset));
     } else {
       viewer.addLabel('No coordinates submitted', { position: {x:0,y:0,z:0}, fontColor: 'white', backgroundColor: 'black' });
     }
@@ -417,22 +443,28 @@ HTML_TEMPLATE = """<!doctype html>
     } else {
       drawTrace(viewer, task.target_coordinates, COLORS.target, 0.2, 0.08, 0.34);
     }
-    if (task.model_a.structure) {
+    if (task.model_a.structure && !useCoordinateTrace(task.model_a.info)) {
       addStructureModel(viewer, task.model_a.aligned_structure || task.model_a.structure, COLORS.prediction, 0.86, 'prediction', displayOffset(0.65));
     } else if (task.model_a.coordinates && task.model_a.coordinates.length > 0) {
-      drawTrace(viewer, offsetCoords(task.model_a.coordinates, displayOffset(0.65)), COLORS.prediction, 0.28, 0.11);
+      drawTrace(viewer, offsetCoords(task.model_a.aligned_coordinates || task.model_a.coordinates, displayOffset(0.65)), COLORS.prediction, 0.28, 0.11);
     }
-    if (task.model_b.structure) {
+    if (task.model_b.structure && !useCoordinateTrace(task.model_b.info)) {
       addStructureModel(viewer, task.model_b.aligned_structure || task.model_b.structure, COLORS.modelB, 0.86, 'prediction', displayOffset(-0.65));
     } else if (task.model_b.coordinates && task.model_b.coordinates.length > 0) {
-      drawTrace(viewer, offsetCoords(task.model_b.coordinates, displayOffset(-0.65)), COLORS.modelB, 0.28, 0.11);
+      drawTrace(viewer, offsetCoords(task.model_b.aligned_coordinates || task.model_b.coordinates, displayOffset(-0.65)), COLORS.modelB, 0.28, 0.11);
     }
     addModelDeltaLinks(
       viewer,
-      offsetCoords(task.model_a.coordinates, displayOffset(0.65)),
-      offsetCoords(task.model_b.coordinates, displayOffset(-0.65))
+      offsetCoords(task.model_a.aligned_coordinates || task.model_a.coordinates, displayOffset(0.65)),
+      offsetCoords(task.model_b.aligned_coordinates || task.model_b.coordinates, displayOffset(-0.65))
     );
     viewer.render();
+  }
+
+  function useCoordinateTrace(info) {
+    if (!info) return false;
+    const backbone = Number(info.backbone_completeness);
+    return Number.isFinite(backbone) && backbone < 0.5;
   }
 
   function addStructureModel(viewer, structure, color, opacity, kind, offset = null) {
@@ -577,9 +609,22 @@ def main() -> None:
     cards = {row["id"]: row for row in load_jsonl(args.dataset)}
     answer_rows_a = {row["id"]: row for row in load_jsonl(answers_a_path)}
     answer_rows_b = {row["id"]: row for row in load_jsonl(args.answers_b)} if args.answers_b else None
+    payload = build_report_payload(
+        cards.values(),
+        answer_rows_a,
+        answer_rows_b=answer_rows_b,
+        model_a_name=args.model_a_name,
+        model_b_name=args.model_b_name,
+    )
+    write_report(args.out, payload)
+    print(args.out)
+
+
+def build_report_payload(cards, answer_rows_a, answer_rows_b=None, model_a_name="Model A", model_b_name="Model B"):
     tasks = []
-    for card in cards.values():
-        if card["task"] != "KomodoProteinFold":
+    card_iter = cards.values() if isinstance(cards, dict) else cards
+    for card in card_iter:
+        if card["task"] not in {"KomodoProteinFold", "DragonProteinFolding"}:
             continue
         hidden = card["hidden_answer"]["answer"]
         target_structure = extract_structure_payload(hidden)
@@ -603,23 +648,37 @@ def main() -> None:
                 "reward": model_a["reward"],
                 "status": model_a["status"],
                 "subscores": model_a["subscores"],
+                "info": model_a["info"],
                 "scoring_explanation": model_a["scoring_explanation"],
                 "predicted_coordinates": model_a["coordinates"],
+                "predicted_aligned_coordinates": model_a["aligned_coordinates"],
                 "predicted_structure": model_a["structure"],
                 "predicted_aligned_structure": model_a["aligned_structure"],
             })
         tasks.append(task)
 
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
+    return {
         "mode": "compare" if answer_rows_b is not None else "single",
-        "model_a_name": args.model_a_name,
-        "model_b_name": args.model_b_name,
+        "model_a_name": model_a_name,
+        "model_b_name": model_b_name,
         "tasks": tasks,
     }
+
+
+def write_report(out_path, payload):
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(HTML_TEMPLATE.replace("__DATA__", json.dumps(payload)))
-    print(out)
+    return out
+
+
+def build_single_task_report(card, answer, out_path, model_name="HUD Model"):
+    payload = build_report_payload(
+        [card],
+        {card["id"]: {"id": card["id"], "answer": answer}},
+        model_a_name=model_name,
+    )
+    return write_report(out_path, payload)
 
 
 def build_model_payload(card, answer_text, target_coord_map):
@@ -629,12 +688,15 @@ def build_model_payload(card, answer_text, target_coord_map):
     coord_map, _ = predicted_protein_coordinates(parsed)
     structure = extract_structure_payload(parsed)
     aligned_structure = align_structure_payload(structure, coord_map, target_coord_map)
+    aligned_coord_map = align_coordinate_map(coord_map, target_coord_map)
     return {
         "reward": result.reward,
         "status": result.status,
         "subscores": result.subscores,
+        "info": result.info,
         "scoring_explanation": protein_explanation(result),
         "coordinates": coordinates_to_rows(coord_map),
+        "aligned_coordinates": coordinates_to_rows(aligned_coord_map),
         "structure": structure,
         "aligned_structure": aligned_structure,
     }
@@ -645,6 +707,22 @@ def coordinates_to_rows(coord_map):
         {"residue_index": idx, "x": xyz[0], "y": xyz[1], "z": xyz[2]}
         for idx, xyz in sorted(coord_map.items())
     ]
+
+
+def align_coordinate_map(moving_coords, target_coords):
+    common = sorted(set(moving_coords).intersection(target_coords))
+    if len(common) < 3:
+        return {}
+    transform = kabsch_transform(
+        [moving_coords[idx] for idx in common],
+        [target_coords[idx] for idx in common],
+    )
+    if transform is None:
+        return {}
+    return {
+        idx: transform_point(point, transform)
+        for idx, point in moving_coords.items()
+    }
 
 
 def extract_structure_payload(record):
@@ -782,8 +860,10 @@ def align_structure_payload(structure, moving_coords, target_coords):
 def protein_explanation(result):
     s = result.subscores
     return (
-        f"dRMSD score={s.get('distance_matrix_rmsd_score', 0):.3f}, "
+        f"reward=coverage * local_structure_score; "
         f"coverage={s.get('coordinate_coverage', 0):.3f}, "
+        f"local_structure={s.get('local_structure_score', 0):.3f}, "
+        f"dRMSD score={s.get('distance_matrix_rmsd_score', 0):.3f}, "
         f"dRMSD={s.get('drmsd_angstrom', 0):.3f}"
     )
 

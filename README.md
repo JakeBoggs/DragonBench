@@ -99,7 +99,7 @@ Current scoring functions:
 
 - Gene parsing: spliced-sequence Levenshtein similarity when the input sequence is available, plus intron interval F1, boundary score, and count accuracy.
 - Promoter expression: Spearman rank correlation, top-1 tissue accuracy, pairwise ranking accuracy, ranking completeness, and NDCG diagnostics.
-- Protein folding: structure validity, backbone completeness, coordinate coverage, and C-alpha distance-matrix RMSD score. All-atom PDB/mmCIF is accepted, with C-alpha extraction used as the scoring bridge.
+- Protein folding: coordinate coverage multiplied by local C-alpha distance-matrix similarity, with all-atom PDB/mmCIF validity and backbone completeness folded into the local structure score. Low residue coverage caps the reward.
 - TF binding: AUROC, AUPRC, ranking accuracy, and Brier score for probability tasks; interval F1 for interval tasks.
 - RNA folding: base-pair F1, exact dot-bracket match, and length validity.
 
@@ -160,6 +160,7 @@ For each task, the environment yields a structured grade payload:
 ```json
 {
   "score": 0.6,
+  "content": "DBEVAL-V0-096 DragonRNAFolding scored 0.600 (scored).",
   "status": "scored",
   "subscores": {"base_pair_f1": 0.75},
   "info": {"matched_base_pairs": 3},
@@ -208,6 +209,7 @@ The viewer supports:
 - all-atom PDB answers via `{"pdb": "ATOM ..."}`;
 - mmCIF answers via `{"mmcif": "data_model..."}`;
 - coordinate-array fallback for older C-alpha answers;
+- automatic C-alpha trace rendering for incomplete-backbone PDB/mmCIF answers, so sparse or CA-only outputs remain visible instead of disappearing in cartoon mode;
 - task deep links through `?task_id=DBEVAL-V0-041`;
 - an offset overlay toggle so nearly identical structures are still readable.
 
@@ -217,9 +219,10 @@ Serve reports locally:
 python3 -m http.server 8765
 ```
 
-Open:
+Open the static demo reports:
 
 ```text
+http://127.0.0.1:8765/reports/protein_folding_3d.html
 http://127.0.0.1:8765/reports/protein_folding_compare.html
 http://127.0.0.1:8765/reports/protein_folding_compare.html?task_id=DBEVAL-V0-041
 ```
@@ -227,6 +230,14 @@ http://127.0.0.1:8765/reports/protein_folding_compare.html?task_id=DBEVAL-V0-041
 ## HUD Visualization Links
 
 HUD can receive a protein viewer URL through the grade payload. This is opt-in so ordinary eval runs do not emit broken localhost links.
+
+For protein tasks, the HUD harness writes a trace-specific single-answer report under:
+
+```text
+reports/hud/
+```
+
+That trace-specific report uses the actual model answer returned during that HUD run. It is a single-answer viewer: ground truth, the submitted model answer, and an overlay. It does not point at the static model-A-vs-model-B smoke/demo comparison report.
 
 Set:
 
@@ -244,13 +255,19 @@ Protein task results include both a flat URL and a structured object:
 
 ```json
 {
+  "content": "DBEVAL-V0-041 KomodoProteinFold scored 0.750 (scored).\nProtein visualization: http://127.0.0.1:8765/reports/hud/DBEVAL-V0-041-abc123def456.html?task_id=DBEVAL-V0-041",
   "info": {
-    "visualization_url": "http://127.0.0.1:8765/reports/protein_folding_compare.html?task_id=DBEVAL-V0-041",
+    "visualization_status": "local_only",
+    "visualization_mode": "single_answer",
+    "visualization_source": "hud_model_answer",
+    "visualization_url": "http://127.0.0.1:8765/reports/hud/DBEVAL-V0-041-abc123def456.html?task_id=DBEVAL-V0-041",
     "visualization": {
-      "kind": "protein_structure_comparison",
+      "kind": "protein_single_answer_structure",
       "viewer": "3dmol",
+      "mode": "single_answer",
       "task_id": "DBEVAL-V0-041",
-      "url": "http://127.0.0.1:8765/reports/protein_folding_compare.html?task_id=DBEVAL-V0-041"
+      "source": "hud_model_answer",
+      "url": "http://127.0.0.1:8765/reports/hud/DBEVAL-V0-041-abc123def456.html?task_id=DBEVAL-V0-041"
     }
   }
 }
@@ -259,6 +276,9 @@ Protein task results include both a flat URL and a structured object:
 Important:
 
 - `127.0.0.1` only works on the same machine where the report server is running.
+- HUD may show `content` more visibly than nested `info`, so the harness repeats the visualization URL in both places.
+- `visualization_mode: "single_answer"` means the link is not the model-A-vs-model-B comparison demo.
+- `visualization_source: "hud_model_answer"` means the report is using the actual folded protein from that HUD trace.
 - For the hosted HUD website or teammates, `DRAGONBENCH_VIZ_BASE_URL` must be a public URL.
 - The public URL must serve both `reports/` and `vendor/`, because the HTML loads `/vendor/3Dmol-min.js`.
 - The generated report deep-links to the task id using `?task_id=...`.
@@ -266,8 +286,10 @@ Important:
 Optional override for the report path:
 
 ```bash
-DRAGONBENCH_PROTEIN_VIZ_REPORT=reports/protein_folding_compare.html
+DRAGONBENCH_PROTEIN_VIZ_REPORT=reports/protein_folding_3d.html
 ```
+
+This override is only a fallback. Normal HUD protein runs generate and link to `reports/hud/<task-id>-<answer-hash>.html`.
 
 Example hosted run:
 

@@ -16,15 +16,17 @@ def base_card(task="KomodoProteinFold"):
     }
 
 
-def test_protein_prompt_includes_hud_transport_constraint():
+def test_prompt_requires_submit_answer_receipt():
     prompt = render_prompt(base_card())
-    assert "hud_transport_constraint" in prompt
-    assert "under 60000 characters" in prompt
-    assert "coordinates" in prompt
-    assert "compact coordinate array" in prompt
+    assert "calling the submit_answer tool" in prompt
+    assert "answer_ref" in prompt
+    assert "sha256" in prompt
+    assert "Direct answers inside <answer> are invalid" in prompt
 
 
-def test_non_protein_prompt_omits_hud_transport_constraint():
+def test_non_protein_prompt_uses_same_submission_contract():
     prompt = render_prompt(base_card(task="RNAFold"))
     assert '"hud_transport_constraint":' not in prompt
     assert "under 60000 characters" not in prompt
+    assert "calling the submit_answer tool" in prompt
+    assert "answer_ref" in prompt

@@ -35,7 +35,11 @@ def make_score_event(card: dict[str, Any], result: ScoreResult, answer: Any | No
         "subscores": result.subscores,
         "info": result.info,
         "scoring_explanation": explain_scoring(card, result),
-        "format_contract": "Model output is parsed from the last lowercase <answer>...</answer> block containing valid JSON. Exact raw JSON is also accepted by local tooling.",
+        "format_contract": (
+            "HUD eval output must end with a final lowercase <answer>...</answer> block containing "
+            "the submit_answer receipt JSON: answer_ref and sha256. Direct task answers in the final "
+            "block are invalid for HUD grading."
+        ),
     }
     if answer is not None and include_answer_preview:
         text = answer if isinstance(answer, str) else json.dumps(answer, sort_keys=True)

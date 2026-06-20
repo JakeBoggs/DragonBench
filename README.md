@@ -72,21 +72,23 @@ Each scoreable card has a hidden answer with `status: verified`, so every task c
 
 ## Model Output Contract
 
-HUD prompts require the model to end with a lowercase final answer block:
+HUD prompts require the model to submit the task answer through the `submit_answer` tool, then end with a lowercase final answer block containing only the returned receipt:
 
 ```xml
-<answer>{"field": "value"}</answer>
+<answer>{"answer_ref":"runs/hud_answers/DBEVAL-V0-001/abc123.json","sha256":"..."}</answer>
 ```
 
 Rules:
 
+- The `submit_answer` tool receives `question_id` and `answer`; `answer` must be the JSON object matching the task schema.
 - The final answer must be the last thing in the response.
-- The scorer parses the last lowercase `<answer>...</answer>` block.
+- The scorer parses the last lowercase `<answer>...</answer>` block as the `submit_answer` receipt.
 - If multiple lowercase answer blocks appear, only the last one is scored.
-- The JSON inside the block must be valid and match the task schema.
+- Direct task answers inside `<answer>` are invalid for HUD grading and score `0`.
+- The receipt JSON inside the block must include `answer_ref` and `sha256`.
 - Uppercase tags like `<Answer>` are invalid.
 - Zero lowercase blocks or malformed JSON scores `0`.
-- Raw JSON is still accepted by local scoring tools for convenience.
+- Raw task-answer JSON is still accepted by local scoring helpers for scripts and unit tests, but not by the HUD eval harness.
 
 ## Scoring
 
@@ -164,9 +166,13 @@ For each task, the environment yields a structured grade payload:
   "content": "DBEVAL-V0-096 DragonRNAFolding scored 0.600 (scored).",
   "status": "scored",
   "subscores": {"base_pair_f1": 0.75},
-  "info": {"matched_base_pairs": 3},
+  "info": {
+    "matched_base_pairs": 3,
+    "answer_submission_mode": "artifact",
+    "answer_ref": "/abs/path/runs/hud_answers/DBEVAL-V0-096/abc123.json"
+  },
   "scoring_explanation": "Reward = ...",
-  "format_contract": "Model output is parsed from the last lowercase <answer>...</answer> block..."
+  "format_contract": "HUD eval output must end with a final lowercase <answer>...</answer> block containing the submit_answer receipt JSON: answer_ref and sha256..."
 }
 ```
 

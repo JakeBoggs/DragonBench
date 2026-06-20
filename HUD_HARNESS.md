@@ -18,10 +18,13 @@ hud set HUD_API_KEY=...
 ## Run
 
 ```bash
-hud eval tasks.py claude
+hud eval tasks.py claude --max-concurrent 5 --max-steps 1 --config max_tokens=65536
 ```
 
 Replace `claude` with any model string supported by the HUD gateway.
+Do not use `--auto-respond` for DragonBench. Each task expects one final
+lowercase `<answer>...</answer>` block, and auto-response can incorrectly send a
+follow-up `CONTINUE` after a valid final answer.
 
 Model answers should end with a lowercase final-answer block in this shape:
 
@@ -35,11 +38,11 @@ The scorer accepts exact raw JSON for local tooling, but HUD prompts ask for the
 
 The file `eval/dragonbench_eval_v0.scoreable.jsonl` has 100 scoreable cards:
 
-- 20 `DragonGeneParseIntrons`
-- 20 `DragonAnolePromoterExpression`
-- 20 `DragonProteinFolding`
+- 20 `AnoleGeneParse`
+- 20 `AnolePromoterExpression`
+- 20 `KomodoProteinFold`
 - 20 `DragonTFBind`
-- 20 `DragonRNAFolding`
+- 20 `RNAFold`
 
 All cards have `hidden_answer.status: verified` and produce real rewards.
 
@@ -73,8 +76,8 @@ Hidden answers are not logged by the HUD harness. Local `scripts/score_answers.p
 Controls:
 
 ```bash
-DRAGONBENCH_SCORE_LOG=0 hud eval tasks.py claude --task-ids 20 -y
-DRAGONBENCH_SCORE_LOG_PATH=logs/my_run.jsonl hud eval tasks.py claude --task-ids 20 -y
+DRAGONBENCH_SCORE_LOG=0 hud eval tasks.py claude --max-steps 1 --task-ids 20 -y
+DRAGONBENCH_SCORE_LOG_PATH=logs/my_run.jsonl hud eval tasks.py claude --max-steps 1 --task-ids 20 -y
 python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl --no-log
 python3 scripts/score_answers.py --answers model_answers.jsonl --log-answer-preview
 ```
@@ -85,11 +88,11 @@ The scorer lives in `dragonbench/scoring.py`.
 
 Task scoring:
 
-- `DragonGeneParseIntrons`: intron interval F1 at IoU >= 0.8, boundary score, intron count accuracy
-- `DragonAnolePromoterExpression`: NDCG over tissue ranking, top-1 tissue accuracy, Spearman rank correlation
-- `DragonProteinFolding` / `KomodoProteinFold`: all-atom PDB/mmCIF validity and structure similarity, with C-alpha extraction as a fallback visualization/scoring bridge while TM-score/lDDT integration lands
+- `AnoleGeneParse`: intron interval F1 at IoU >= 0.8, boundary score, intron count accuracy
+- `AnolePromoterExpression`: NDCG over tissue ranking, top-1 tissue accuracy, Spearman rank correlation
+- `KomodoProteinFold`: all-atom PDB/mmCIF validity and structure similarity, with C-alpha extraction as a fallback visualization/scoring bridge while TM-score/lDDT integration lands
 - `DragonTFBind`: interval F1 at IoU >= 0.5, center-distance score, confidence presence
-- `DragonRNAFolding`: base-pair F1, exact dot-bracket match, length validity
+- `RNAFold`: base-pair F1, exact dot-bracket match, length validity
 
 The scoring functions are deterministic, JSON-only, and avoid LLM judging.
 

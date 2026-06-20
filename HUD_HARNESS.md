@@ -18,13 +18,16 @@ hud set HUD_API_KEY=...
 ## Run
 
 ```bash
-hud eval tasks.py claude --max-concurrent 5 --max-steps 1 --config max_tokens=65536
+hud eval tasks.py claude --max-concurrent 5 --max-steps 1 --config max_tokens=32768
 ```
 
 Replace `claude` with any model string supported by the HUD gateway.
 Do not use `--auto-respond` for DragonBench. Each task expects one final
 lowercase `<answer>...</answer>` block, and auto-response can incorrectly send a
 follow-up `CONTINUE` after a valid final answer.
+Use a bounded output cap such as `max_tokens=32768` for protein-folding runs;
+larger caps can keep the gateway call open for several minutes before HUD sees
+any assistant message.
 
 Model answers should end with a lowercase final-answer block in this shape:
 

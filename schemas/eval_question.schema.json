@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonBench Eval Question",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "task",
+    "status",
+    "lineage",
+    "source",
+    "question",
+    "expected_output_schema",
+    "hidden_answer",
+    "scoring",
+    "human_review"
+  ],
+  "properties": {
+    "id": {"type": "string"},
+    "version": {"type": "string"},
+    "task": {
+      "type": "string",
+      "enum": [
+        "DragonGeneParse",
+        "DragonTFBind",
+        "DragonEnhancerTissue",
+        "DragonVariantEffect",
+        "DragonPhenotypeGene"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "candidate_needs_human_review",
+        "locked_eval",
+        "rejected"
+      ]
+    },
+    "lineage": {
+      "type": "string",
+      "enum": ["non_reptile", "reptile_specific", "cross_species"]
+    },
+    "source": {
+      "type": "object",
+      "required": ["primary_dataset", "source_url", "record_hint"],
+      "properties": {
+        "primary_dataset": {"type": "string"},
+        "secondary_dataset": {"type": ["string", "null"]},
+        "source_url": {"type": "string"},
+        "record_hint": {"type": "string"},
+        "license_notes": {"type": "string"}
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["prompt", "model_input", "dragon_relevance"],
+      "properties": {
+        "prompt": {"type": "string"},
+        "model_input": {"type": "object"},
+        "dragon_relevance": {"type": "string"}
+      }
+    },
+    "expected_output_schema": {"type": "object"},
+    "hidden_answer": {
+      "type": "object",
+      "required": ["status", "answer"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["needs_source_extraction", "extracted", "verified"]
+        },
+        "answer": {}
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["primary", "secondary"],
+      "properties": {
+        "primary": {"type": "string"},
+        "secondary": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "human_review": {
+      "type": "object",
+      "required": ["review_status", "acceptance_checks", "notes"],
+      "properties": {
+        "review_status": {
+          "type": "string",
+          "enum": ["not_started", "in_review", "approved", "rejected"]
+        },
+        "acceptance_checks": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "task_id": "DragonTFBind-JASPAR-CTCF-example-001",
+  "dataset": {
+    "name": "JASPAR CORE",
+    "record": "MA0139.1 CTCF",
+    "local_file": "data/jaspar/MA0139.1_CTCF.jaspar",
+    "source_url": "https://jaspar.elixir.no/api/v1/matrix/MA0139.1.jaspar"
+  },
+  "observation": {
+    "species": "synthetic",
+    "tf": "CTCF",
+    "coordinate_system": "0-based, end-exclusive",
+    "sequences": [
+      {
+        "id": "seq_001",
+        "sequence": "AACGTGACCTAGGTCATGCACTTAGGACCTTGGCCACCAGGGGGCGCTATTCGATCCGTAAGCTT"
+      },
+      {
+        "id": "seq_002",
+        "sequence": "GATCTTACGACTAGCTAGGATCCATATCGGATCGTAGCTAACGATCGGATCTAGCATCGATCGA"
+      }
+    ]
+  },
+  "hidden_labels_for_builder": [
+    {
+      "sequence_id": "seq_001",
+      "start": 30,
+      "end": 49,
+      "strand": "+",
+      "label_type": "embedded_consensus_match"
+    }
+  ],
+  "expected_action_schema": {
+    "predictions": [
+      {
+        "sequence_id": "seq_001",
+        "start": 30,
+        "end": 49,
+        "strand": "+",
+        "confidence": 0.95
+      }
+    ]
+  },
+  "scoring": {
+    "primary": "interval_f1_at_iou_0_5",
+    "secondary": [
+      "auprc_over_candidate_windows",
+      "mean_center_distance_for_matched_intervals",
+      "calibration_brier_score"
+    ]
+  }
+}

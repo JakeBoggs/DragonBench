@@ -82,11 +82,10 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
         )
     if task == "AnolePromoterExpression":
         return (
-            "Reward = 0.50 * spearman_rank_scaled + 0.20 * top1_tissue_accuracy "
-            "+ 0.20 * pairwise_ranking_accuracy + 0.10 * ranking_completeness. "
-            f"Values: spearman_scaled={s.get('spearman_rank_scaled', 0):.3f}, "
+            "A valid answer must rank every candidate tissue exactly once. "
+            "Reward = max(0, Spearman rank correlation). "
+            f"Values: spearman={s.get('spearman_rank_correlation', 0):.3f}, "
             f"top1={s.get('top1_tissue_accuracy', 0):.3f}, "
-            f"pairwise={s.get('pairwise_ranking_accuracy', 0):.3f}, "
             f"complete={s.get('ranking_completeness', 0):.3f}, "
             f"reward={result.reward:.3f}."
         )

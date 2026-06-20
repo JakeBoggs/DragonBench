@@ -88,19 +88,15 @@ Given the 2,000 bp sequence upstream of the CDS start for an Anolis carolinensis
 {
   "promoter_sequence": "ACGT...",
   "candidate_tissues": [
+    "adrenal_gland",
     "brain",
+    "dewlap_skin",
+    "embryo",
     "heart",
     "liver",
     "lung",
-    "skeletal_muscle",
-    "dewlap_skin",
     "ovary",
-    "adrenal_gland",
-    "regenerating_tail_tip",
-    "tail_base",
-    "original_tail",
-    "embryo_28_somite",
-    "embryo_38_somite"
+    "skeletal_muscle"
   ]
 }
 ```
@@ -110,18 +106,34 @@ Given the 2,000 bp sequence upstream of the CDS start for an Anolis carolinensis
 ```json
 {
   "tissue_ranking": [
-    "skeletal_muscle",
-    "heart",
+    "adrenal_gland",
     "brain",
+    "dewlap_skin",
+    "embryo",
+    "heart",
     "liver",
-    "lung"
+    "lung",
+    "ovary",
+    "skeletal_muscle"
   ]
 }
 ```
 
+The output must contain every candidate tissue exactly once.
+
 ## Dataset
 
-Use the Anolis carolinensis RNA-seq expression atlas associated with the transcriptome-supported reannotation.
+Use Bgee 15.2 TPM values for experiment `SRP009831`, derived from the
+Anolis carolinensis tissue transcriptome study:
+
+* Eckalbar et al. 2013, DOI `10.1186/1471-2164-14-49`;
+* adrenal gland, brain, dewlap skin, pooled embryo, heart, liver, lung,
+  ovary, and skeletal muscle;
+* Bgee-normalized data from a single experiment and processing pipeline.
+
+The separately prepared 28- and 38-somite embryo libraries and the
+tail-regeneration samples are excluded to avoid cross-protocol and
+non-baseline comparisons.
 
 ## Selection criteria
 
@@ -130,7 +142,9 @@ Only include genes that:
 * are protein-coding;
 * have a clearly defined CDS start;
 * have a full 2 kb upstream region available;
-* have measurable expression in at multiple tissues.
+* have measurable expression in at least seven of the nine tissues;
+* have at least 10 TPM in the top-ranked tissue;
+* have a top-to-second expression ratio of at least 1.5.
 
 Prefer genes where:
 
@@ -146,26 +160,24 @@ Avoid:
 
 Try to cover multiple tissue classes:
 
-* brain-enriched genes;
-* heart-enriched genes;
-* liver or lung genes;
-* skeletal muscle genes;
-* skin/dewlap genes;
-* reproductive or adrenal genes;
-* embryo or regeneration-associated genes.
+* every candidate tissue is represented as the top-ranked tissue;
+* no two selected genes have the same complete tissue ordering;
+* top-tissue frequencies are approximately balanced.
 
 The exact distribution is less important than selecting clear, high-confidence examples.
 
 ## Scoring
 
-Primary metric:
+The submission must contain every candidate tissue exactly once.
+Incomplete rankings, duplicates, or unknown tissues score zero.
 
-* correlation between predicted and true tissue rankings.
+```text
+reward = max(0, Spearman rank correlation)
+```
 
-Secondary metrics:
-
-* top tissue accuracy;
-* pairwise ranking accuracy.
+Negative correlations are clipped to zero, so inverse rankings score zero.
+Top-tissue accuracy and NDCG are reported as diagnostics but do not affect
+the reward.
 
 ---
 

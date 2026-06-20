@@ -46,8 +46,25 @@ def main():
             check("introns" in out, row, failures, "output schema must request introns")
         elif task == "AnolePromoterExpression":
             check(len(mid.get("promoter_sequence", "")) == 2000, row, failures, "promoter must be 2000 bp")
-            check("candidate_tissues" in mid and len(mid["candidate_tissues"]) >= 2, row, failures, "candidate_tissues missing or too small")
+            check(
+                "candidate_tissues" in mid and len(mid["candidate_tissues"]) == 9,
+                row,
+                failures,
+                "must provide exactly nine candidate tissues",
+            )
             check("tissue_ranking" in out, row, failures, "output schema must request tissue_ranking")
+            check(
+                set(hidden.get("tissue_ranking", [])) == set(mid.get("candidate_tissues", [])),
+                row,
+                failures,
+                "hidden tissue_ranking must be a permutation of candidate_tissues",
+            )
+            check(
+                set(hidden.get("expression", {})) == set(mid.get("candidate_tissues", [])),
+                row,
+                failures,
+                "hidden expression must cover every candidate tissue",
+            )
         elif task == "KomodoProteinFold":
             check(80 <= len(mid.get("protein_sequence", "")) <= 350, row, failures, "protein length must be 80-350 aa")
             check("pdb" in out or "mmcif" in out, row, failures, "output schema must request PDB/mmCIF")

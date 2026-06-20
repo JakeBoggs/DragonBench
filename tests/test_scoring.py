@@ -46,6 +46,67 @@ def test_anole_promoter_expression_accepts_tissue_ranking():
     assert result.reward > 0.999
 
 
+def test_promoter_expression_incomplete_ranking_is_penalized():
+    tissues = [
+        "adrenal_gland",
+        "brain",
+        "dewlap_skin",
+        "embryo",
+        "heart",
+        "liver",
+        "lung",
+        "ovary",
+        "skeletal_muscle",
+    ]
+    card = {
+        "task": "AnolePromoterExpression",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "tissue_ranking": tissues,
+                "expression": {
+                    tissue: float(len(tissues) - rank)
+                    for rank, tissue in enumerate(tissues)
+                },
+            },
+        },
+    }
+    result = score_answer(card, {"tissue_ranking": ["adrenal_gland"]})
+    assert result.status == "invalid_answer"
+    assert result.reward == 0.0
+    assert result.subscores["ranking_completeness"] == 1 / 9
+
+
+def test_promoter_expression_reverse_ranking_scores_zero():
+    tissues = [
+        "adrenal_gland",
+        "brain",
+        "dewlap_skin",
+        "embryo",
+        "heart",
+        "liver",
+        "lung",
+        "ovary",
+        "skeletal_muscle",
+    ]
+    card = {
+        "task": "AnolePromoterExpression",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "tissue_ranking": tissues,
+                "expression": {
+                    tissue: float(len(tissues) - rank)
+                    for rank, tissue in enumerate(tissues)
+                },
+            },
+        },
+    }
+    result = score_answer(card, {"tissue_ranking": list(reversed(tissues))})
+    assert result.status == "scored"
+    assert result.reward == 0.0
+
+
 def test_protein_folding_scores_coordinates():
     card = {
         "task": "KomodoProteinFold",

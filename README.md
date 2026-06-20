@@ -25,6 +25,7 @@ eval/
 schemas/
   eval_question.schema.json
 scripts/
+  build_promoter_expression_fixture.py
   build_scoreable_eval.py
   make_smoke_answers.py
   make_demo_model_b_answers.py
@@ -98,7 +99,7 @@ dragonbench/scoring.py
 Current scoring functions:
 
 - Gene parsing: spliced-sequence Levenshtein similarity when the input sequence is available, plus intron interval F1, boundary score, and count accuracy.
-- Promoter expression: Spearman rank correlation, top-1 tissue accuracy, pairwise ranking accuracy, ranking completeness, and NDCG diagnostics.
+- Promoter expression: chance-clipped Spearman rank correlation across nine tissues. Incomplete or duplicate rankings score zero; top-1 accuracy and NDCG are diagnostics.
 - Protein folding: coordinate coverage multiplied by local C-alpha distance-matrix similarity, with all-atom PDB/mmCIF validity and backbone completeness folded into the local structure score. Low residue coverage caps the reward.
 - TF binding: AUROC, AUPRC, ranking accuracy, and Brier score for probability tasks; interval F1 for interval tasks.
 - RNA folding: base-pair F1, exact dot-bracket match, and length validity.
@@ -310,6 +311,7 @@ HUD will not necessarily embed the 3Dmol viewer inline. The reliable integration
 Build or refresh the scoreable eval:
 
 ```bash
+python3 scripts/build_promoter_expression_fixture.py
 python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```

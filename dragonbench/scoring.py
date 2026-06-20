@@ -139,18 +139,32 @@ def score_promoter_expression_ranking(pred: dict[str, Any], expected: dict[str, 
         return ScoreResult(0.0, "unscored_missing_true_ranking", {}, {})
     ndcg = ndcg_for_order(pred_order, expected.get("expression", {}), true_order)
     top1 = 1.0 if pred_order and pred_order[0] == true_order[0] else 0.0
-    spearman = (spearman_order_corr(pred_order, true_order) + 1.0) / 2.0
     completeness = len(set(pred_order).intersection(true_order)) / len(true_order)
-    pairwise = pairwise_order_accuracy(pred_order, true_order)
-    reward = 0.50 * spearman + 0.20 * top1 + 0.20 * pairwise + 0.10 * completeness
+    if len(pred_order) != len(true_order) or set(pred_order) != set(true_order):
+        return ScoreResult(
+            0.0,
+            "invalid_answer",
+            {
+                "ndcg_at_all_tissues": ndcg,
+                "top1_tissue_accuracy": top1,
+                "ranking_completeness": completeness,
+            },
+            {
+                "reason": "tissue_ranking must contain every candidate tissue exactly once",
+                "n_pred": len(pred_order),
+                "n_true": len(true_order),
+                "true_top1": true_order[0],
+            },
+        )
+    spearman = spearman_order_corr(pred_order, true_order)
+    reward = max(0.0, spearman)
     return ScoreResult(
         clamp01(reward),
         "scored",
         {
             "ndcg_at_all_tissues": ndcg,
             "top1_tissue_accuracy": top1,
-            "spearman_rank_scaled": clamp01(spearman),
-            "pairwise_ranking_accuracy": pairwise,
+            "spearman_rank_correlation": spearman,
             "ranking_completeness": completeness,
         },
         {"n_pred": len(pred_order), "n_true": len(true_order), "true_top1": true_order[0]}
@@ -535,24 +549,6 @@ def spearman_order_corr(pred_order: list[str], true_order: list[str]) -> float:
     a = [float(pred_ranks.get(label, missing_rank)) for label in labels]
     b = [float(true_ranks[label]) for label in labels]
     return pearson_corr(a, b)
-
-
-def pairwise_order_accuracy(pred_order: list[str], true_order: list[str]) -> float:
-    labels = list(dict.fromkeys(true_order))
-    if len(labels) < 2:
-        return 1.0
-    missing_rank = len(labels) + 1
-    true_ranks = {label: idx for idx, label in enumerate(true_order)}
-    pred_ranks = {label: idx for idx, label in enumerate(pred_order)}
-    total = 0
-    correct = 0
-    for i, a in enumerate(labels):
-        for b in labels[i + 1:]:
-            total += 1
-            true_cmp = true_ranks[a] < true_ranks[b]
-            pred_cmp = pred_ranks.get(a, missing_rank) < pred_ranks.get(b, missing_rank)
-            correct += 1 if true_cmp == pred_cmp else 0
-    return correct / total if total else 1.0
 
 
 def pairwise_score_ranking_accuracy(true_scores: list[float], pred_scores: list[float]) -> float:

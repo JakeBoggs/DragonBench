@@ -81,12 +81,19 @@ def build_anole_promoter_expression(start):
             idx,
             "AnolePromoterExpression",
             source(
-                "Expression Atlas Anolis carolinensis baseline RNA-seq",
+                "Bgee-normalized RNA-seq from the Anolis tissue transcriptome study",
                 record["source_url"],
-                f"{record['gene_id']} {record['gene_name']} promoter {record['seq_region']}:{record['promoter_start']}-{record['promoter_end']}",
-                record["ensembl_region_url"],
+                (
+                    f"{record['gene_id']} {record['gene_name']} canonical CDS promoter "
+                    f"{record['seq_region']}:{record['promoter_start']}-{record['promoter_end']}"
+                ),
+                record["expression_source_url"],
             ),
-            "Given the 2000 bp sequence upstream of an Anolis CDS start, predict tissues ordered by expression.",
+            (
+                "Given the 2000 bp sequence upstream of an Anolis CDS start, "
+                "rank every candidate tissue from highest to lowest predicted expression. "
+                "Return each candidate tissue exactly once."
+            ),
             {"promoter_sequence": record["promoter_sequence"], "candidate_tissues": record["candidate_tissues"]},
             {"tissue_ranking": ["tissue_name"]},
             {
@@ -94,8 +101,16 @@ def build_anole_promoter_expression(start):
                 "expression": record["expression"],
                 "gene_id": record["gene_id"],
                 "gene_name": record["gene_name"],
+                "expression_experiment_id": record["expression_experiment_id"],
+                "expression_unit": record["expression_unit"],
             },
-            {"primary": "spearman_rank_correlation", "secondary": ["top_tissue_accuracy", "pairwise_ranking_accuracy"]},
+            {
+                "primary": "spearman_rank_correlation",
+                "secondary": [
+                    "top1_tissue_accuracy",
+                    "ranking_completeness",
+                ],
+            },
             "Promoter-to-tissue ranking is a reptile-specific proxy for controlling where developmental programs are expressed.",
         ))
     return rows

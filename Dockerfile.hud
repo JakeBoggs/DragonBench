@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY dragonbench ./dragonbench
+COPY eval ./eval
+COPY tasks.py .
+
+EXPOSE 8765
+CMD ["hud", "serve", "tasks:env", "--host", "0.0.0.0", "--port", "8765"]

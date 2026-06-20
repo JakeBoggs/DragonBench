@@ -4,19 +4,71 @@ from pathlib import Path
 
 
 OUT = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
+PDB_CA_CACHE = Path("data/protein_structures/ca_structures.jsonl")
+RAW_PDB_DIR = Path("data/protein_structures/raw_pdb")
+ANOLE_GENE_PARSE_FIXTURE = Path("data/source/anole_refseq/gene_parse_records.jsonl")
+KOMODO_ALPHAFOLD_FIXTURE = Path("data/source/komodo_alphafold/komodo_alphafold_structures.jsonl")
+RFAM_RNA_FIXTURE = Path("data/source/rfam/rna_folding_records.jsonl")
+ANOLE_PROMOTER_FIXTURE = Path("data/source/anole_expression/promoter_expression_records.jsonl")
+JASPAR_TFBIND_FIXTURE = Path("data/source/jaspar_tfbind/tf_binding_records.jsonl")
 BASES = "ACGT"
 RNA_BASES = "AUGC"
 AAS = "ACDEFGHIKLMNPQRSTVWY"
-ANOLE_TISSUES = ["brain", "heart", "liver", "limb_bud", "skin", "gonad"]
 
-
-JASPAR_MOTIFS = [
-    ("MA0139.1", "CTCF", "CCACCAGGGGGCGCTATTC"),
-    ("MA0148.4", "FOXA1", "TGTTTAC"),
-    ("MA0599.1", "KLF5", "GGGTGGG"),
-    ("MA0497.1", "MEF2C", "CTATTTATAG"),
-    ("MA0099.3", "FOS::JUN", "TGACTCA"),
+ANOLE_TISSUES = [
+    "brain",
+    "heart",
+    "liver",
+    "lung",
+    "skeletal_muscle",
+    "dewlap_skin",
+    "ovary",
+    "adrenal_gland",
+    "regenerating_tail_tip",
+    "tail_base",
+    "original_tail",
+    "embryo_28_somite",
+    "embryo_38_somite",
 ]
+
+TF_MOTIFS = [
+    ("CTCF", "CCACCAGGGGGCGCTATTC"),
+    ("FOXA1", "TGTTTAC"),
+    ("KLF5", "GGGTGGG"),
+    ("MEF2C", "CTATTTATAG"),
+    ("FOS_JUN", "TGACTCA"),
+    ("PAX6", "TAATCC"),
+    ("MYOD1", "CACCTG"),
+    ("HNF4A", "AGGTCA"),
+    ("SOX10", "AACAAAG"),
+    ("GATA4", "GATAAG"),
+    ("NKX2_5", "TTAAGTG"),
+    ("PPARG", "AGGTCANAGGTCA".replace("N", "A")),
+    ("E2F1", "TTTSSCGC".replace("S", "C")),
+    ("RUNX1", "TGTGGT"),
+    ("IRF4", "GAAA"),
+    ("STAT3", "TTCCCGGAA"),
+    ("RORA", "AGGTCA"),
+    ("HOXA9", "TTAT"),
+    ("NFE2L2", "TGACTCAGCA"),
+    ("ESR1", "GGTCACAGTGACC"),
+]
+
+TISSUE_MOTIFS = {
+    "brain": "CACGTG",
+    "heart": "CATAAT",
+    "liver": "TGTTTA",
+    "lung": "TTCCAA",
+    "skeletal_muscle": "CACCTG",
+    "dewlap_skin": "GGGTGGG",
+    "ovary": "AGGTCA",
+    "adrenal_gland": "TGACCT",
+    "regenerating_tail_tip": "TTAATTAA",
+    "tail_base": "AATAAA",
+    "original_tail": "CAGCTG",
+    "embryo_28_somite": "TAATCC",
+    "embryo_38_somite": "GATAAG",
+}
 
 
 def randseq(rng, alphabet, n):
@@ -33,13 +85,13 @@ def source(name, url, hint, secondary=None):
     }
 
 
-def common(idx, task, lineage, source_info, prompt, model_input, output_schema, hidden_answer, scoring, relevance):
+def common(idx, task, source_info, prompt, model_input, output_schema, hidden_answer, scoring, relevance):
     return {
         "id": f"DBEVAL-V0-{idx:03d}",
         "version": "dragonbench_eval_v0_scoreable",
         "task": task,
         "status": "locked_eval",
-        "lineage": lineage,
+        "lineage": "reptile_specific" if task in {"AnoleGeneParse", "AnolePromoterExpression", "KomodoProteinFold"} else "cross_species",
         "source": source_info,
         "question": {
             "prompt": prompt,
@@ -57,223 +109,221 @@ def common(idx, task, lineage, source_info, prompt, model_input, output_schema, 
                 "JSON output schema fixed",
                 "no model database access required",
             ],
-            "notes": "Scoreable bootstrap eval item. Replace with source-extracted biological records during curation.",
+            "notes": "Scoreable eval item. Source extraction status is recorded in source metadata.",
         },
     }
 
 
-def build_gene_parse_introns(start):
+def splice_sequence(sequence, introns):
+    pieces = []
+    cursor = 0
+    for intron in sorted(introns, key=lambda item: item["start"]):
+        pieces.append(sequence[cursor:intron["start"]])
+        cursor = intron["end"]
+    pieces.append(sequence[cursor:])
+    return "".join(pieces)
+
+
+def build_anole_gene_parse(start):
     rows = []
-    rng = random.Random(101)
-    for j in range(20):
+    records = load_jsonl_required(ANOLE_GENE_PARSE_FIXTURE, 20)
+    for j, record in enumerate(records[:20]):
         idx = start + j
-        utr_left = randseq(rng, BASES, rng.randint(10, 18))
-        exon_lengths = [rng.randint(24, 44), rng.randint(26, 48), rng.randint(24, 46)]
-        intron_lengths = [rng.randint(18, 34), rng.randint(18, 34)]
-        seq = utr_left
-        exons = []
-        introns = []
-        pos = len(seq)
-        for k, exon_len in enumerate(exon_lengths):
-            exon_seq = ("ATG" if k == 0 else "") + randseq(rng, BASES, exon_len - (3 if k == 0 else 0))
-            if k == len(exon_lengths) - 1:
-                exon_seq = exon_seq[:-3] + "TAA"
-            seq += exon_seq
-            exons.append({"start": pos, "end": pos + len(exon_seq)})
-            pos += len(exon_seq)
-            if k < len(intron_lengths):
-                intron_seq = "GT" + randseq(rng, BASES, intron_lengths[k] - 4) + "AG"
-                introns.append({"start": pos, "end": pos + len(intron_seq)})
-                seq += intron_seq
-                pos += len(intron_seq)
-        seq += randseq(rng, BASES, rng.randint(10, 18))
         rows.append(common(
             idx,
-            "DragonGeneParseIntrons",
-            "reptile_specific" if j >= 14 else "non_reptile",
+            "AnoleGeneParse",
             source(
-                "GENCODE / Ensembl annotation-style intron controls",
-                "https://www.gencodegenes.org/",
-                "sequence windows with exon and intron interval labels",
-                "https://www.ensembl.org/",
+                "NCBI RefSeq Anolis carolinensis annotation",
+                record["source_url"],
+                f"{record['seqid']}:{record['source_start']}-{record['source_end']} transcript {record['id']}",
             ),
-            "Identify intron intervals in the genomic DNA window for the selected transcript.",
-            {
-                "species": "Anolis carolinensis" if j >= 14 else ("human" if j % 2 else "mouse"),
-                "assembly": "bootstrap_scoreable_control",
-                "strand": "+",
-                "sequence_window": seq,
-                "coordinate_system": "0-based, end-exclusive",
-                "transcript_policy": "single selected transcript",
-            },
+            "Given the genomic DNA sequence of one green anole gene region, identify all intron spans.",
+            {"sequence": record["sequence"]},
             {"introns": [{"start": "integer", "end": "integer"}]},
-            {"introns": introns, "exons": exons},
-            {"primary": "intron_interval_f1_at_iou_0_8", "secondary": ["intron_boundary_mae", "intron_count_accuracy"]},
-            "Intron recognition tests whether a model can parse gene architecture before reasoning about regulation or variants.",
+            {"introns": record["introns"], "exons": record["exons"], "spliced_sequence": record["spliced_sequence"]},
+            {"primary": "spliced_sequence_levenshtein_similarity", "secondary": ["intron_interval_f1_at_iou_0_8", "intron_count_accuracy"]},
+            "Intron recognition tests whether a model can parse reptile gene architecture before downstream regulatory reasoning.",
         ))
     return rows
 
 
 def build_anole_promoter_expression(start):
     rows = []
-    rng = random.Random(202)
-    tissue_motifs = {
-        "brain": "CACGTG",
-        "heart": "CATAAT",
-        "liver": "TGTTTA",
-        "limb_bud": "TTAATTAA",
-        "skin": "GGGTGGG",
-        "gonad": "AGGTCA",
-    }
-    for j in range(20):
+    records = load_jsonl_required(ANOLE_PROMOTER_FIXTURE, 20)
+    for j, record in enumerate(records[:20]):
         idx = start + j
-        ranked = ANOLE_TISSUES[j % len(ANOLE_TISSUES):] + ANOLE_TISSUES[:j % len(ANOLE_TISSUES)]
-        ranked = ranked[:]
-        if j % 3 == 0:
-            ranked[1], ranked[2] = ranked[2], ranked[1]
-        seq = list(randseq(rng, BASES, 2000))
-        expression = {}
-        for rank, tissue in enumerate(ranked):
-            copies = max(0, 5 - rank)
-            expression[tissue] = round(100.0 / (rank + 1), 3)
-            motif = tissue_motifs[tissue]
-            for c in range(copies):
-                pos = (97 * (j + 1) + 211 * c + 37 * rank) % (2000 - len(motif))
-                seq[pos:pos + len(motif)] = motif
         rows.append(common(
             idx,
-            "DragonAnolePromoterExpression",
-            "reptile_specific",
+            "AnolePromoterExpression",
             source(
-                "Anolis expression atlas / Ensembl promoter-style controls",
-                "https://www.ensembl.org/Anolis_carolinensis/Info/Index",
-                "2000 bp upstream-of-CDS promoter windows with tissue-ranked expression labels",
+                "Expression Atlas Anolis carolinensis baseline RNA-seq",
+                record["source_url"],
+                f"{record['gene_id']} {record['gene_name']} promoter {record['seq_region']}:{record['promoter_start']}-{record['promoter_end']}",
+                record["ensembl_region_url"],
             ),
-            "Given the 2000 bp sequence immediately upstream of an Anolis CDS start, output tissues ordered from highest predicted expression to lowest.",
+            "Given the 2000 bp sequence upstream of an Anolis CDS start, predict tissues ordered by expression.",
+            {"promoter_sequence": record["promoter_sequence"], "candidate_tissues": record["candidate_tissues"]},
+            {"tissue_ranking": ["tissue_name"]},
             {
-                "species": "Anolis carolinensis",
-                "promoter_window": "2000 bp upstream of CDS start",
-                "sequence": "".join(seq),
-                "candidate_tissues": ANOLE_TISSUES,
-                "output_requirement": "Return ordered_tissues as a permutation of candidate_tissues, highest expression first.",
+                "tissue_ranking": record["tissue_ranking"],
+                "expression": record["expression"],
+                "gene_id": record["gene_id"],
+                "gene_name": record["gene_name"],
             },
-            {"ordered_tissues": ["tissue_name"]},
-            {"ordered_tissues": ranked, "expression": expression},
-            {"primary": "ndcg_at_all_tissues", "secondary": ["top1_tissue_accuracy", "spearman_rank_correlation"]},
-            "Promoter-to-tissue ranking is a direct reptile-specific proxy for controlling where developmental programs are expressed.",
+            {"primary": "spearman_rank_correlation", "secondary": ["top_tissue_accuracy", "pairwise_ranking_accuracy"]},
+            "Promoter-to-tissue ranking is a reptile-specific proxy for controlling where developmental programs are expressed.",
         ))
     return rows
 
 
-def build_protein_folding(start):
+def build_komodo_protein_fold(start):
     rows = []
-    rng = random.Random(303)
-    for j in range(20):
+    structures = load_jsonl_required(KOMODO_ALPHAFOLD_FIXTURE, 20)
+    for j, structure in enumerate(structures[:20]):
         idx = start + j
-        length = 34 + (j % 7) * 3
-        protein = "M" + randseq(rng, AAS, length - 1)
-        contacts = []
-        for offset in [6, 10, 14]:
-            for i in range(1 + (j % 3), length - offset, 11):
-                contacts.append({"i": i, "j": i + offset})
-        contacts = contacts[:8]
         rows.append(common(
             idx,
-            "DragonProteinFolding",
-            "cross_species",
+            "KomodoProteinFold",
             source(
-                "PDB/CASP-style protein contact controls",
-                "https://www.rcsb.org/",
-                "protein sequence with long-range residue contact labels",
-                "https://predictioncenter.org/",
+                "UniProt Varanus komodoensis proteins with AlphaFold DB predicted structures",
+                structure["source_url"],
+                f"{structure['accession']} {structure['protein_name']}",
+                structure["uniprot_url"],
             ),
-            "Predict residue-residue contacts for the protein sequence. Use 0-based residue indices.",
+            "Given a Komodo dragon amino-acid sequence, generate a complete all-atom monomer structure in PDB or mmCIF format.",
+            {"protein_sequence": structure["protein_sequence"]},
+            {"pdb": "string containing a valid PDB structure, or use mmcif for mmCIF text"},
             {
-                "protein_sequence": protein,
-                "msa_allowed": False,
-                "templates_allowed": False,
-                "coordinate_system": "0-based residue indices",
+                "coordinates": [
+                    {
+                        "residue_index": item["residue_index"],
+                        "x": item["x"],
+                        "y": item["y"],
+                        "z": item["z"],
+                    }
+                    for item in structure["coordinates"]
+                ],
+                "sequence_length": structure["sequence_length"],
+                "uniprot_accession": structure["accession"],
+                "protein_name": structure["protein_name"],
+                "raw_pdb_path": structure["pdb_path"],
             },
-            {"contacts": [{"i": "integer", "j": "integer", "probability": "number_0_to_1"}]},
-            {"contacts": contacts, "sequence_length": length},
-            {"primary": "contact_f1_long_range_tolerance_0", "secondary": ["contact_precision", "contact_recall", "contact_count_accuracy"]},
-            "Protein folding/contact prediction tests whether a model can reason about molecular machinery behind traits.",
+            {"primary": "distance_matrix_rmsd_score", "secondary": ["coordinate_coverage", "structure_validity", "backbone_atom_completeness"]},
+            "Protein folding tests concrete sequence-to-structure reasoning for reptile molecular machinery.",
         ))
     return rows
+
+
+def load_pdb_ca_structures():
+    if not PDB_CA_CACHE.exists():
+        raise FileNotFoundError(
+            f"{PDB_CA_CACHE} does not exist. Run `python3 scripts/fetch_pdb_ca_structures.py` first."
+        )
+    structures = [json.loads(line) for line in PDB_CA_CACHE.read_text().splitlines() if line.strip()]
+    if len(structures) < 20:
+        raise ValueError(f"{PDB_CA_CACHE} must contain at least 20 structures, found {len(structures)}")
+    return structures
 
 
 def build_tf_binding(start):
     rows = []
-    rng = random.Random(404)
-    for j in range(20):
+    records = load_jsonl_required(JASPAR_TFBIND_FIXTURE, 20)
+    for j, record in enumerate(records[:20]):
         idx = start + j
-        motif_id, tf, motif = JASPAR_MOTIFS[j % len(JASPAR_MOTIFS)]
-        left = randseq(rng, BASES, rng.randint(24, 42))
-        right = randseq(rng, BASES, rng.randint(24, 42))
-        seq = left + motif + right
-        negative = randseq(rng, BASES, len(seq))
-        start_pos = len(left)
         rows.append(common(
             idx,
             "DragonTFBind",
-            "cross_species" if j >= 15 else "non_reptile",
-            source("JASPAR CORE", "https://jaspar.elixir.no/", f"{motif_id} {tf} curated TF binding profile"),
-            "Predict transcription-factor binding intervals in the provided DNA sequence windows.",
+            source(
+                "JASPAR CORE HT-SELEX/SELEX transcription factor binding profiles",
+                record["source_url"],
+                f"{record['matrix_id']} {record['tf_name']} UniProt {record['uniprot_id']}",
+                record["uniprot_id"],
+            ),
+            "Given one transcription factor protein sequence and 10 DNA sequences, predict which DNA sequences are bound.",
+            {"tf_sequence": record["tf_sequence"], "dna_candidates": record["dna_candidates"]},
+            {"binding_probabilities": {"seq_id": "number_0_to_1"}},
             {
-                "species": "synthetic_from_public_motif",
-                "tf": tf,
-                "motif_id": motif_id,
-                "sequences": [
-                    {"id": "seq_001", "sequence": seq},
-                    {"id": "seq_002", "sequence": negative},
-                ],
-                "coordinate_system": "0-based, end-exclusive",
+                "binding_probabilities": record["binding_probabilities"],
+                "tf": record["tf_name"],
+                "matrix_id": record["matrix_id"],
+                "uniprot_id": record["uniprot_id"],
+                "pfm": record["pfm"],
             },
-            {"predictions": [{"sequence_id": "string", "start": "integer", "end": "integer", "strand": "string_or_null", "confidence": "number_0_to_1"}]},
-            {"binding_intervals": [{"sequence_id": "seq_001", "start": start_pos, "end": start_pos + len(motif), "strand": "+"}]},
-            {"primary": "interval_f1_at_iou_0_5", "secondary": ["mean_center_distance", "confidence_presence"]},
+            {"primary": "auroc", "secondary": ["auprc", "ranking_accuracy"]},
             "TF binding is the smallest scoreable proxy for sequence-level regulatory control.",
         ))
     return rows
 
 
+def mutate_motif(rng, motif, changes):
+    chars = list(motif)
+    for pos in rng.sample(range(len(chars)), changes):
+        choices = [base for base in BASES if base != chars[pos]]
+        chars[pos] = rng.choice(choices)
+    return "".join(chars)
+
+
 def build_rna_folding(start):
     rows = []
-    rng = random.Random(505)
-    stems = [
-        ("GGGAAACCC", "(((...)))"),
-        ("GGCCAAAAGGCC", "((((....))))"),
-        ("GCGCAAAAGCGC", "((((....))))"),
-        ("GGAACCUUCC", "((......))"),
-    ]
-    for j in range(20):
+    records = load_jsonl_required(RFAM_RNA_FIXTURE, 20)
+    for j, record in enumerate(records[:20]):
         idx = start + j
-        seq_core, struct_core = stems[j % len(stems)]
-        left = randseq(rng, RNA_BASES, rng.randint(3, 7))
-        right = randseq(rng, RNA_BASES, rng.randint(3, 7))
-        sequence = left + seq_core + right
-        dot = "." * len(left) + struct_core + "." * len(right)
         rows.append(common(
             idx,
-            "DragonRNAFolding",
-            "cross_species",
+            "RNAFold",
             source(
-                "bpRNA / ArchiveII-style RNA secondary structure controls",
-                "https://bprna.cgrb.oregonstate.edu/",
-                "RNA sequence with dot-bracket secondary structure labels",
-                "https://rna.urmc.rochester.edu/pub/archiveII/",
+                "Rfam seed alignments",
+                record["source_url"],
+                f"{record['rfam_acc']} {record['rfam_id']} {record['sequence_id']}",
             ),
-            "Predict the RNA secondary structure in dot-bracket notation.",
-            {
-                "rna_sequence": sequence,
-                "allow_pseudoknots": False,
-                "output_requirement": "Return dot_bracket with exactly one character per RNA base.",
-            },
+            "Given a realistic RNA sequence, predict its secondary structure in dot-bracket notation.",
+            {"sequence": record["sequence"]},
             {"dot_bracket": "string"},
-            {"dot_bracket": dot, "base_pairs": dot_bracket_pairs(dot)},
-            {"primary": "base_pair_f1", "secondary": ["exact_dot_bracket_match", "length_validity"]},
-            "RNA folding tests sequence-to-structure reasoning for regulatory RNAs and transcript-level control.",
+            {"dot_bracket": record["dot_bracket"], "base_pairs": dot_bracket_pairs(record["dot_bracket"])},
+            {"primary": "base_pair_f1", "secondary": ["precision", "recall", "exact_structure_match"]},
+            "RNA folding tests sequence-to-structure reasoning for transcript-level control.",
         ))
+    return rows
+
+
+def synthetic_rna(rng, salt):
+    left = randseq(rng, RNA_BASES, rng.randint(4, 10))
+    right = randseq(rng, RNA_BASES, rng.randint(4, 10))
+    stem1 = randseq(rng, "AUGC", rng.randint(7, 12))
+    stem2 = randseq(rng, "AUGC", rng.randint(6, 10))
+    loop1 = randseq(rng, RNA_BASES, rng.randint(6, 12))
+    loop2 = randseq(rng, RNA_BASES, rng.randint(5, 11))
+    spacer = randseq(rng, RNA_BASES, rng.randint(6, 16))
+    sequence = left + stem1 + loop1 + reverse_complement_rna(stem1) + spacer + stem2 + loop2 + reverse_complement_rna(stem2) + right
+    dot = (
+        "." * len(left)
+        + "(" * len(stem1)
+        + "." * len(loop1)
+        + ")" * len(stem1)
+        + "." * len(spacer)
+        + "(" * len(stem2)
+        + "." * len(loop2)
+        + ")" * len(stem2)
+        + "." * len(right)
+    )
+    if salt % 3 == 0:
+        bulge_pos = len(left) + len(stem1) // 2
+        sequence = sequence[:bulge_pos] + rng.choice(RNA_BASES) + sequence[bulge_pos:]
+        dot = dot[:bulge_pos] + "." + dot[bulge_pos:]
+    return sequence, dot
+
+
+def reverse_complement_rna(seq):
+    table = str.maketrans("AUGC", "UACG")
+    return seq.translate(table)[::-1]
+
+
+def load_jsonl_required(path, minimum):
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist. Run the source fixture generation step first.")
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    if len(rows) < minimum:
+        raise ValueError(f"{path} must contain at least {minimum} records, found {len(rows)}")
     return rows
 
 
@@ -297,9 +347,9 @@ def write(rows):
 
 def main():
     rows = []
-    rows.extend(build_gene_parse_introns(1))
+    rows.extend(build_anole_gene_parse(1))
     rows.extend(build_anole_promoter_expression(21))
-    rows.extend(build_protein_folding(41))
+    rows.extend(build_komodo_protein_fold(41))
     rows.extend(build_tf_binding(61))
     rows.extend(build_rna_folding(81))
     assert len(rows) == 100

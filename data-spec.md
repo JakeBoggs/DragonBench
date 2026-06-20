@@ -1,0 +1,387 @@
+# Dragon Genetics Benchmark Spec v0.1
+
+## Goal
+
+Create a 100-question genetics benchmark with 20 questions in each of five categories:
+
+1. Anole gene parsing: identify intron spans inside genes.
+2. Anole promoter expression: rank tissues by expression from a 2 kb upstream sequence.
+3. Komodo dragon protein folding: generate an all-atom PDB/mmCIF structure from an amino-acid sequence.
+4. TF binding: given a transcription factor and 10 DNA sequences, predict which sequences bind.
+5. RNA folding: predict secondary structure for realistic RNA sequences.
+
+The focus is on selecting high-quality examples rather than maximizing dataset size.
+
+---
+
+# Category 1: `AnoleGeneParse`
+
+## Task
+
+Given the genomic DNA sequence of one green anole gene region, identify all intron spans.
+
+## Input
+
+```json
+{
+  "sequence": "ACGT..."
+}
+```
+
+## Output
+
+```json
+{
+  "introns": [
+    {"start": 150, "end": 620},
+    {"start": 900, "end": 1250}
+  ]
+}
+```
+
+## Dataset
+
+Use a single Anolis carolinensis annotation source throughout the benchmark.
+
+Preferred sources:
+
+* NCBI RefSeq Anolis carolinensis annotation
+* Transcriptome-supported Anolis carolinensis reannotation
+
+## Selection criteria
+
+Only include genes that are:
+
+* protein-coding;
+* represented by a single chosen transcript;
+* between 1,000 and 5,000 bp in total span;
+* contain 1–5 introns;
+* free of ambiguous bases;
+* reasonably clean and unambiguous in annotation.
+
+## Selecting 20 questions
+
+Aim for a mix of intron counts:
+
+* 5 genes with 1 intron;
+* 5 genes with 2 introns;
+* 5 genes with 3 introns;
+* 5 genes with 4–5 introns.
+
+Include a range of sequence lengths across the 1–5 kb range.
+
+## Scoring
+
+compare the ground truth spliced sequence and the predicted spliced sequence using the levenshtein distance
+
+---
+
+# Category 2: `AnolePromoterExpression`
+
+## Task
+
+Given the 2,000 bp sequence upstream of the CDS start for an Anolis carolinensis gene, predict the ordered ranking of tissues by expression.
+
+## Input
+
+```json
+{
+  "promoter_sequence": "ACGT...",
+  "candidate_tissues": [
+    "brain",
+    "heart",
+    "liver",
+    "lung",
+    "skeletal_muscle",
+    "dewlap_skin",
+    "ovary",
+    "adrenal_gland",
+    "regenerating_tail_tip",
+    "tail_base",
+    "original_tail",
+    "embryo_28_somite",
+    "embryo_38_somite"
+  ]
+}
+```
+
+## Output
+
+```json
+{
+  "tissue_ranking": [
+    "skeletal_muscle",
+    "heart",
+    "brain",
+    "liver",
+    "lung"
+  ]
+}
+```
+
+## Dataset
+
+Use the Anolis carolinensis RNA-seq expression atlas associated with the transcriptome-supported reannotation.
+
+## Selection criteria
+
+Only include genes that:
+
+* are protein-coding;
+* have a clearly defined CDS start;
+* have a full 2 kb upstream region available;
+* have measurable expression in at multiple tissues.
+
+Prefer genes where:
+
+* the ranking is biologically meaningful and not nearly flat.
+
+Avoid:
+
+* housekeeping genes expressed similarly everywhere;
+* genes with weak expression across all tissues;
+* genes whose tissue rankings are unstable or noisy.
+
+## Selecting 20 questions
+
+Try to cover multiple tissue classes:
+
+* brain-enriched genes;
+* heart-enriched genes;
+* liver or lung genes;
+* skeletal muscle genes;
+* skin/dewlap genes;
+* reproductive or adrenal genes;
+* embryo or regeneration-associated genes.
+
+The exact distribution is less important than selecting clear, high-confidence examples.
+
+## Scoring
+
+Primary metric:
+
+* correlation between predicted and true tissue rankings.
+
+Secondary metrics:
+
+* top tissue accuracy;
+* pairwise ranking accuracy.
+
+---
+
+# Category 3: `KomodoProteinFold`
+
+## Task
+
+Given a Komodo dragon amino-acid sequence, generate a complete all-atom monomer structure in PDB.
+
+## Input
+
+```json
+{
+  "protein_sequence": "M..."
+}
+```
+
+## Output
+
+A valid PDB or mmCIF structure for the protein.
+
+## Dataset
+
+Use Komodo dragon protein sequences together with a consistent structure source.
+
+## Selection criteria
+
+Choose proteins that are structurally clean and interesting.
+
+Prefer proteins that:
+
+* are 80–350 amino acids long;
+* are likely monomeric;
+* have compact, well-defined folds;
+* have little intrinsic disorder;
+* represent a variety of biological functions.
+
+Avoid:
+
+* highly disordered proteins;
+* proteins with unresolved regions.
+
+## Selecting 20 questions
+
+Aim for structural diversity:
+
+* enzymes;
+* signaling proteins;
+* structural proteins;
+* metabolic proteins;
+* other biologically interesting Komodo proteins.
+
+## Scoring
+
+Primary metrics:
+
+* TM-score;
+* lDDT.
+
+Secondary metrics:
+
+* RMSD;
+* structural completeness;
+* validity of the generated structure file.
+
+---
+
+# Category 4: `DragonTFBind`
+
+## Task
+
+Given one transcription factor protein sequence and 10 DNA sequences, predict which DNA sequences are bound by the transcription factor.
+
+## Input
+
+```json
+{
+  "tf_sequence": "M...",
+  "dna_candidates": [
+    {"id": "seq_01", "sequence": "ACGT..."},
+    {"id": "seq_02", "sequence": "TGCA..."}
+  ]
+}
+```
+
+## Output
+
+```json
+{
+  "binding_probabilities": {
+    "seq_01": 0.91,
+    "seq_02": 0.07
+  }
+}
+```
+
+## Dataset
+
+Use an in-vitro TF binding dataset where full transcription factor sequences are available.
+
+SMiLE-seq is the preferred starting point because it is closest to the intended task format.
+
+## Selection criteria
+
+Choose transcription factors that:
+
+* have full protein sequences available;
+* have clear sequence-specific DNA binding preferences;
+* have enough positive and negative DNA examples.
+
+For each question:
+
+* provide exactly 10 DNA sequences;
+* include a mix of strong binders, weak/intermediate binders, and non-binders;
+* keep sequence lengths reasonably consistent.
+
+Avoid:
+
+* TFs that only function as obligate heterodimers;
+* ambiguous binding datasets;
+
+## Selecting 20 questions
+
+Prefer 20 distinct transcription factors.
+
+Try to cover multiple TF families:
+
+* homeodomain;
+* zinc finger;
+* bHLH;
+* bZIP;
+* nuclear receptor;
+* forkhead and related families.
+
+## Scoring
+
+Primary metrics:
+
+* AUROC;
+* AUPRC;
+* ranking accuracy.
+
+---
+
+# Category 5: `RNAFold`
+
+## Task
+
+Given a realistic RNA sequence, predict its secondary structure.
+
+## Input
+
+```json
+{
+  "sequence": "AUGC..."
+}
+```
+
+## Output
+
+```json
+{
+  "dot_bracket": "..(((...))).."
+}
+```
+
+## Dataset
+
+Pick a curated RNA secondary-structure datasets such as:
+
+* bpRNA;
+* Rfam-derived structures;
+* experimentally supported RNA structure collections.
+
+## Selection criteria
+
+Choose RNAs that:
+
+* are 50–250 nucleotides long;
+* contain only A, C, G, and U;
+* have complete secondary-structure annotations;
+* contain meaningful stem-loop structure.
+
+Prefer:
+
+* realistic biological RNAs;
+* diverse structural motifs;
+* moderate complexity.
+
+Avoid:
+
+* pseudoknots in the initial version;
+* highly repetitive sequences;
+* trivial single-hairpin examples;
+* extremely famous textbook examples that are likely memorized.
+
+## Selecting 20 questions
+
+Aim for structural diversity:
+
+* tRNAs;
+* riboswitches;
+* miRNA precursors;
+* structured ncRNAs;
+* rRNA or related fragments.
+
+Avoid selecting many highly similar sequences from the same family.
+
+## Scoring
+
+Primary metric:
+
+* base-pair F1.
+
+Secondary metrics:
+
+* precision and recall of predicted base pairs;
+* exact structure match for shorter RNAs;
+* structural distance metrics.

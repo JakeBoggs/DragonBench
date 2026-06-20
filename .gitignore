@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+eval/smoke_answers.jsonl
+logs/
+
+# Local HUD state
+.hud/
+
+# Large downloaded source artifacts; keep derived JSONL fixtures tracked.
+data/source/**/*.gz
+data/source/**/*.xlsx
+
+# Generated protein visualization artifacts.
+data/protein_structures/raw_pdb/
+reports/
+vendor/3Dmol-min.js

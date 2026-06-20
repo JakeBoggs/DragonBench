@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+from urllib.parse import quote
 
 from dragonbench.io import load_jsonl
 from dragonbench.logging import log_score_event, make_score_event
@@ -14,7 +16,28 @@ except ImportError as exc:  # pragma: no cover - exercised only without hud-pyth
 
 
 DATASET_PATH = Path(__file__).parent / "eval" / "dragonbench_eval_v0.scoreable.jsonl"
+PROTEIN_TASKS = {"DragonProteinFolding", "KomodoProteinFold"}
 env = Environment(name="dragonbench-eval-v0")
+
+
+def make_visualization_info(card):
+    if card.get("task") not in PROTEIN_TASKS:
+        return {}
+    base_url = os.environ.get("DRAGONBENCH_VIZ_BASE_URL", "").strip()
+    if not base_url:
+        return {}
+    report_path = os.environ.get("DRAGONBENCH_PROTEIN_VIZ_REPORT", "reports/protein_folding_compare.html").strip()
+    report_path = report_path or "reports/protein_folding_compare.html"
+    url = f"{base_url.rstrip('/')}/{report_path.lstrip('/')}?task_id={quote(card['id'], safe='')}"
+    return {
+        "visualization_url": url,
+        "visualization": {
+            "kind": "protein_structure_comparison",
+            "viewer": "3dmol",
+            "task_id": card["id"],
+            "url": url,
+        }
+    }
 
 
 @env.template()
@@ -25,11 +48,13 @@ async def dragonbench_question(question_id: str):
     result = score_answer(card, answer)
     log_score_event(card, result, answer, emit_stdout=True)
     event = make_score_event(card, result, include_answer_preview=False)
+    info = dict(result.info)
+    info.update(make_visualization_info(card))
     yield {
         "score": result.reward,
         "status": result.status,
         "subscores": result.subscores,
-        "info": result.info,
+        "info": info,
         "scoring_explanation": event["scoring_explanation"],
         "format_contract": event["format_contract"],
     }

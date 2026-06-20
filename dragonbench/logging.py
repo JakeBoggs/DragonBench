@@ -71,35 +71,48 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
             f"Format/scoring status is {result.status}. Reward is {result.reward:.3f}. "
             f"Details: {json.dumps(result.info, sort_keys=True)}"
         )
-    if task == "DragonGeneParseIntrons":
+    if task in {"AnoleGeneParse", "DragonGeneParseIntrons"}:
         return (
-            "Reward = 0.75 * intron_interval_f1_at_iou_0_8 "
-            "+ 0.15 * intron_boundary_score + 0.10 * intron_count_accuracy. "
-            f"Values: F1={s.get('intron_interval_f1_at_iou_0_8', 0):.3f}, "
+            "Reward is the normalized Levenshtein similarity between true and predicted spliced sequences. "
+            f"Values: spliced_similarity={s.get('spliced_sequence_levenshtein_similarity', 0):.3f}, "
+            f"intron_F1={s.get('intron_interval_f1_at_iou_0_8', 0):.3f}, "
             f"boundary={s.get('intron_boundary_score', 0):.3f}, "
             f"count={s.get('intron_count_accuracy', 0):.3f}, "
             f"reward={result.reward:.3f}."
         )
-    if task == "DragonAnolePromoterExpression":
+    if task in {"AnolePromoterExpression", "DragonAnolePromoterExpression"}:
         return (
-            "Reward = 0.55 * ndcg_at_all_tissues + 0.20 * top1_tissue_accuracy "
-            "+ 0.20 * spearman_rank_scaled + 0.05 * ranking_completeness. "
-            f"Values: NDCG={s.get('ndcg_at_all_tissues', 0):.3f}, "
+            "Reward = 0.50 * spearman_rank_scaled + 0.20 * top1_tissue_accuracy "
+            "+ 0.20 * pairwise_ranking_accuracy + 0.10 * ranking_completeness. "
+            f"Values: spearman_scaled={s.get('spearman_rank_scaled', 0):.3f}, "
             f"top1={s.get('top1_tissue_accuracy', 0):.3f}, "
-            f"spearman_scaled={s.get('spearman_rank_scaled', 0):.3f}, "
+            f"pairwise={s.get('pairwise_ranking_accuracy', 0):.3f}, "
             f"complete={s.get('ranking_completeness', 0):.3f}, "
             f"reward={result.reward:.3f}."
         )
-    if task == "DragonProteinFolding":
+    if task in {"KomodoProteinFold", "DragonProteinFolding"}:
         return (
-            "Reward = 0.90 * contact_f1_long_range_tolerance_0 + 0.10 * contact_count_accuracy. "
-            f"Values: F1={s.get('contact_f1_long_range_tolerance_0', 0):.3f}, "
-            f"precision={s.get('contact_precision', 0):.3f}, "
-            f"recall={s.get('contact_recall', 0):.3f}, "
-            f"count={s.get('contact_count_accuracy', 0):.3f}, "
+            "Reward = 0.80 * distance_matrix_rmsd_score + 0.10 * coordinate_coverage "
+            "+ 0.05 * structure_validity + 0.05 * backbone_atom_completeness. "
+            "distance_matrix_rmsd_score = 1 / (1 + dRMSD / 2), where dRMSD compares all pairwise C-alpha distances and is rotation/translation invariant. "
+            f"Values: dRMSD_score={s.get('distance_matrix_rmsd_score', 0):.3f}, "
+            f"coverage={s.get('coordinate_coverage', 0):.3f}, "
+            f"validity={s.get('structure_validity', 0):.3f}, "
+            f"backbone={s.get('backbone_atom_completeness', 0):.3f}, "
+            f"dRMSD={s.get('drmsd_angstrom', 0):.3f}, "
+            f"mean_distance_error={s.get('mean_distance_error_angstrom', 0):.3f}, "
             f"reward={result.reward:.3f}."
         )
     if task == "DragonTFBind":
+        if "auroc" in s:
+            return (
+                "Reward = 0.40 * AUROC + 0.35 * AUPRC + 0.20 * ranking_accuracy + 0.05 * brier_score. "
+                f"Values: AUROC={s.get('auroc', 0):.3f}, "
+                f"AUPRC={s.get('auprc', 0):.3f}, "
+                f"ranking={s.get('ranking_accuracy', 0):.3f}, "
+                f"brier={s.get('brier_score', 0):.3f}, "
+                f"reward={result.reward:.3f}."
+            )
         return (
             "Reward = 0.80 * interval_f1_at_iou_0_5 + 0.15 * center_distance_score "
             "+ 0.05 * confidence_presence. "
@@ -110,7 +123,7 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
             f"confidence={s.get('confidence_presence', 0):.3f}, "
             f"reward={result.reward:.3f}."
         )
-    if task == "DragonRNAFolding":
+    if task in {"RNAFold", "DragonRNAFolding"}:
         return (
             "Reward = 0.80 * base_pair_f1 + 0.15 * exact_dot_bracket_match "
             "+ 0.05 * length_validity. "

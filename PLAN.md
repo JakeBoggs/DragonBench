@@ -81,11 +81,13 @@ Scoring:
 
 ### 3. DragonProteinFolding
 
-Goal: predict residue-residue contacts from protein sequence.
+Goal: predict C-alpha 3D coordinates from protein sequence.
 
 Primary sources:
 
 - PDB
+- RCSB PDB downloadable structures
+- AlphaFold DB for predicted-structure bootstrap tasks
 - CASP/CAMEO-style held-out structure targets
 
 Inputs:
@@ -95,13 +97,13 @@ Inputs:
 
 Outputs:
 
-- residue contact pairs with confidence
+- one C-alpha coordinate per residue
 
 Scoring:
 
-- contact F1
-- contact precision/recall
-- contact count accuracy
+- distance-matrix RMSD score
+- coordinate coverage
+- mean pairwise distance error
 
 ### 4. DragonTFBind
 
@@ -238,7 +240,7 @@ When scaling beyond the 100-question eval:
 
 - split GeneParseIntrons by chromosome or genomic locus, not random intron
 - split AnolePromoterExpression by gene family or held-out tissue/gene sets
-- split ProteinFolding by protein family or fold, not random contact
+- split ProteinFolding by protein family or fold, not random residue
 - split TFBind by TF, cell type, or genomic region
 - split RNAFolding by RNA family, not random sequence
 - hold out whole reptile species when possible

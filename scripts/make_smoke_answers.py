@@ -42,15 +42,15 @@ def main() -> None:
         answer = {}
         hidden = card["hidden_answer"]["answer"]
         task = card["task"]
-        if task in {"AnoleGeneParse", "DragonGeneParseIntrons"}:
+        if task == "AnoleGeneParse":
             answer = {
                 "introns": hidden["introns"],
             }
-        elif task in {"AnolePromoterExpression", "DragonAnolePromoterExpression"}:
+        elif task == "AnolePromoterExpression":
             answer = {
-                "tissue_ranking": hidden.get("tissue_ranking", hidden.get("ordered_tissues")),
+                "tissue_ranking": hidden["tissue_ranking"],
             }
-        elif task in {"KomodoProteinFold", "DragonProteinFolding"}:
+        elif task == "KomodoProteinFold":
             if isinstance(hidden.get("pdb"), str):
                 answer = {"pdb": hidden["pdb"]}
             elif isinstance(hidden.get("mmcif"), str):
@@ -59,43 +59,14 @@ def main() -> None:
                 answer = {"pdb": Path(hidden["raw_pdb_path"]).read_text(errors="ignore")}
             else:
                 answer = {"pdb": coordinates_to_ca_pdb(hidden["coordinates"])}
-        elif task in {"RNAFold", "DragonRNAFolding"}:
+        elif task == "RNAFold":
             answer = {
                 "dot_bracket": hidden["dot_bracket"],
             }
-        elif task == "DragonGeneParse":
-            answer = {
-                "exons": hidden["exons"],
-                "splice_donors": hidden["splice_donors"],
-                "splice_acceptors": hidden["splice_acceptors"],
-                "cds_intervals": hidden["cds_intervals"],
-            }
         elif task == "DragonTFBind":
-            if "binding_probabilities" in hidden:
-                answer = {"binding_probabilities": hidden["binding_probabilities"]}
-            else:
-                answer = {
-                    "predictions": [
-                        {**item, "confidence": 0.95}
-                        for item in hidden["binding_intervals"]
-                    ]
-                }
-        elif task == "DragonEnhancerTissue":
-            answer = {
-                "active": hidden["active"],
-                "tissues": hidden["tissues"],
-            }
-        elif task == "DragonVariantEffect":
-            answer = {
-                "variant_scores": [
-                    {"variant": item["variant"], "predicted_score": item["score"]}
-                    for item in hidden["variant_scores"]
-                ]
-            }
-        elif task == "DragonPhenotypeGene":
-            answer = {
-                "phenotypes": hidden["phenotypes"],
-            }
+            answer = {"binding_probabilities": hidden["binding_probabilities"]}
+        else:
+            raise ValueError(f"unsupported task: {task}")
         rows.append({"id": card["id"], "answer": f"<answer>{json.dumps(answer)}</answer>"})
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w") as f:

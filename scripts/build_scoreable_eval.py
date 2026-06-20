@@ -1,78 +1,13 @@
 import json
-import random
 from pathlib import Path
 
 
 OUT = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
-PDB_CA_CACHE = Path("data/protein_structures/ca_structures.jsonl")
-RAW_PDB_DIR = Path("data/protein_structures/raw_pdb")
 ANOLE_GENE_PARSE_FIXTURE = Path("data/source/anole_refseq/gene_parse_records.jsonl")
 KOMODO_ALPHAFOLD_FIXTURE = Path("data/source/komodo_alphafold/komodo_alphafold_structures.jsonl")
 RFAM_RNA_FIXTURE = Path("data/source/rfam/rna_folding_records.jsonl")
 ANOLE_PROMOTER_FIXTURE = Path("data/source/anole_expression/promoter_expression_records.jsonl")
 JASPAR_TFBIND_FIXTURE = Path("data/source/jaspar_tfbind/tf_binding_records.jsonl")
-BASES = "ACGT"
-RNA_BASES = "AUGC"
-AAS = "ACDEFGHIKLMNPQRSTVWY"
-
-ANOLE_TISSUES = [
-    "brain",
-    "heart",
-    "liver",
-    "lung",
-    "skeletal_muscle",
-    "dewlap_skin",
-    "ovary",
-    "adrenal_gland",
-    "regenerating_tail_tip",
-    "tail_base",
-    "original_tail",
-    "embryo_28_somite",
-    "embryo_38_somite",
-]
-
-TF_MOTIFS = [
-    ("CTCF", "CCACCAGGGGGCGCTATTC"),
-    ("FOXA1", "TGTTTAC"),
-    ("KLF5", "GGGTGGG"),
-    ("MEF2C", "CTATTTATAG"),
-    ("FOS_JUN", "TGACTCA"),
-    ("PAX6", "TAATCC"),
-    ("MYOD1", "CACCTG"),
-    ("HNF4A", "AGGTCA"),
-    ("SOX10", "AACAAAG"),
-    ("GATA4", "GATAAG"),
-    ("NKX2_5", "TTAAGTG"),
-    ("PPARG", "AGGTCANAGGTCA".replace("N", "A")),
-    ("E2F1", "TTTSSCGC".replace("S", "C")),
-    ("RUNX1", "TGTGGT"),
-    ("IRF4", "GAAA"),
-    ("STAT3", "TTCCCGGAA"),
-    ("RORA", "AGGTCA"),
-    ("HOXA9", "TTAT"),
-    ("NFE2L2", "TGACTCAGCA"),
-    ("ESR1", "GGTCACAGTGACC"),
-]
-
-TISSUE_MOTIFS = {
-    "brain": "CACGTG",
-    "heart": "CATAAT",
-    "liver": "TGTTTA",
-    "lung": "TTCCAA",
-    "skeletal_muscle": "CACCTG",
-    "dewlap_skin": "GGGTGGG",
-    "ovary": "AGGTCA",
-    "adrenal_gland": "TGACCT",
-    "regenerating_tail_tip": "TTAATTAA",
-    "tail_base": "AATAAA",
-    "original_tail": "CAGCTG",
-    "embryo_28_somite": "TAATCC",
-    "embryo_38_somite": "GATAAG",
-}
-
-
-def randseq(rng, alphabet, n):
-    return "".join(rng.choice(alphabet) for _ in range(n))
 
 
 def source(name, url, hint, secondary=None):
@@ -112,16 +47,6 @@ def common(idx, task, source_info, prompt, model_input, output_schema, hidden_an
             "notes": "Scoreable eval item. Source extraction status is recorded in source metadata.",
         },
     }
-
-
-def splice_sequence(sequence, introns):
-    pieces = []
-    cursor = 0
-    for intron in sorted(introns, key=lambda item: item["start"]):
-        pieces.append(sequence[cursor:intron["start"]])
-        cursor = intron["end"]
-    pieces.append(sequence[cursor:])
-    return "".join(pieces)
 
 
 def build_anole_gene_parse(start):
@@ -214,17 +139,6 @@ def build_komodo_protein_fold(start):
     return rows
 
 
-def load_pdb_ca_structures():
-    if not PDB_CA_CACHE.exists():
-        raise FileNotFoundError(
-            f"{PDB_CA_CACHE} does not exist. Run `python3 scripts/fetch_pdb_ca_structures.py` first."
-        )
-    structures = [json.loads(line) for line in PDB_CA_CACHE.read_text().splitlines() if line.strip()]
-    if len(structures) < 20:
-        raise ValueError(f"{PDB_CA_CACHE} must contain at least 20 structures, found {len(structures)}")
-    return structures
-
-
 def build_tf_binding(start):
     rows = []
     records = load_jsonl_required(JASPAR_TFBIND_FIXTURE, 20)
@@ -255,14 +169,6 @@ def build_tf_binding(start):
     return rows
 
 
-def mutate_motif(rng, motif, changes):
-    chars = list(motif)
-    for pos in rng.sample(range(len(chars)), changes):
-        choices = [base for base in BASES if base != chars[pos]]
-        chars[pos] = rng.choice(choices)
-    return "".join(chars)
-
-
 def build_rna_folding(start):
     rows = []
     records = load_jsonl_required(RFAM_RNA_FIXTURE, 20)
@@ -284,38 +190,6 @@ def build_rna_folding(start):
             "RNA folding tests sequence-to-structure reasoning for transcript-level control.",
         ))
     return rows
-
-
-def synthetic_rna(rng, salt):
-    left = randseq(rng, RNA_BASES, rng.randint(4, 10))
-    right = randseq(rng, RNA_BASES, rng.randint(4, 10))
-    stem1 = randseq(rng, "AUGC", rng.randint(7, 12))
-    stem2 = randseq(rng, "AUGC", rng.randint(6, 10))
-    loop1 = randseq(rng, RNA_BASES, rng.randint(6, 12))
-    loop2 = randseq(rng, RNA_BASES, rng.randint(5, 11))
-    spacer = randseq(rng, RNA_BASES, rng.randint(6, 16))
-    sequence = left + stem1 + loop1 + reverse_complement_rna(stem1) + spacer + stem2 + loop2 + reverse_complement_rna(stem2) + right
-    dot = (
-        "." * len(left)
-        + "(" * len(stem1)
-        + "." * len(loop1)
-        + ")" * len(stem1)
-        + "." * len(spacer)
-        + "(" * len(stem2)
-        + "." * len(loop2)
-        + ")" * len(stem2)
-        + "." * len(right)
-    )
-    if salt % 3 == 0:
-        bulge_pos = len(left) + len(stem1) // 2
-        sequence = sequence[:bulge_pos] + rng.choice(RNA_BASES) + sequence[bulge_pos:]
-        dot = dot[:bulge_pos] + "." + dot[bulge_pos:]
-    return sequence, dot
-
-
-def reverse_complement_rna(seq):
-    table = str.maketrans("AUGC", "UACG")
-    return seq.translate(table)[::-1]
 
 
 def load_jsonl_required(path, minimum):

@@ -4,13 +4,13 @@ DragonBench is a 100-question genetics benchmark for evaluating models on datase
 
 The benchmark has 5 task families with 20 questions each:
 
-- `DragonGeneParseIntrons`: identify intron spans in gene sequences.
-- `DragonAnolePromoterExpression`: rank Anolis tissues by expression from a 2 kb upstream promoter sequence.
-- `DragonProteinFolding` / `KomodoProteinFold`: generate an all-atom monomer structure from a protein sequence.
-- `DragonTFBind`: predict transcription-factor binding probabilities or intervals.
-- `DragonRNAFolding`: predict RNA secondary structure.
+- `AnoleGeneParse`: identify intron spans in gene sequences.
+- `AnolePromoterExpression`: rank Anolis tissues by expression from a 2 kb upstream promoter sequence.
+- `KomodoProteinFold`: generate an all-atom monomer structure from a protein sequence.
+- `DragonTFBind`: predict transcription-factor binding probabilities.
+- `RNAFold`: predict RNA secondary structure.
 
-See `PLAN.md` for the eval-building plan and `data-spec.md` for the current target data contract.
+See `data-spec.md` for the current data contract.
 
 ## Repository Layout
 
@@ -19,24 +19,22 @@ dragonbench/
   prompts.py                       # HUD/model prompt rendering
   scoring.py                       # deterministic scorers
   logging.py                       # local/HUD score-event logs
+data/source/                       # source-backed benchmark fixtures
 eval/
   dragonbench_eval_v0.scoreable.jsonl
-  smoke_answers.jsonl
-  demo_model_b_answers.jsonl
+schemas/
+  eval_question.schema.json
 scripts/
   build_scoreable_eval.py
   make_smoke_answers.py
   make_demo_model_b_answers.py
   score_answers.py
   build_protein_3d_report.py
-reports/
-  protein_folding_3d.html
-  protein_folding_compare.html
-vendor/
-  3Dmol-min.js
 tasks.py                           # HUD taskset entrypoint
-HUD_HARNESS.md                     # detailed HUD notes
+Dockerfile.hud                     # containerized HUD environment
 ```
+
+Smoke answers, demo answers, reports, logs, and the local 3Dmol.js asset are generated artifacts and are ignored by Git.
 
 ## Setup
 
@@ -45,12 +43,6 @@ Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 pip install hud-python
-```
-
-If you use the installed conda HUD CLI on this machine, the binary is expected at:
-
-```bash
-/Users/ibrahim/anaconda3/bin/hud
 ```
 
 Set the HUD API key before running hosted evals:
@@ -69,11 +61,11 @@ eval/dragonbench_eval_v0.scoreable.jsonl
 
 It contains 100 scoreable cards:
 
-- 20 `DragonGeneParseIntrons`
-- 20 `DragonAnolePromoterExpression`
-- 20 `DragonProteinFolding`
+- 20 `AnoleGeneParse`
+- 20 `AnolePromoterExpression`
+- 20 `KomodoProteinFold`
 - 20 `DragonTFBind`
-- 20 `DragonRNAFolding`
+- 20 `RNAFold`
 
 Each scoreable card has a hidden answer with `status: verified`, so every task can be scored automatically. The hidden answers are not included in model prompts.
 
@@ -296,14 +288,6 @@ HUD will not necessarily embed the 3Dmol viewer inline. The reliable integration
 Build or refresh the scoreable eval:
 
 ```bash
-python3 scripts/build_scoreable_eval.py
-python3 scripts/make_smoke_answers.py
-```
-
-Refresh protein structure cache when needed:
-
-```bash
-python3 scripts/fetch_pdb_ca_structures.py
 python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```

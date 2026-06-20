@@ -42,7 +42,7 @@ def main() -> None:
     smoke_by_id = {row["id"]: row for row in load_jsonl(SMOKE)}
     rows = []
     for card in load_jsonl(DATASET):
-        if card["task"] not in {"KomodoProteinFold", "DragonProteinFolding"}:
+        if card["task"] != "KomodoProteinFold":
             rows.append(smoke_by_id[card["id"]])
             continue
 

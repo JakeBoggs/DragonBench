@@ -579,23 +579,17 @@ def main() -> None:
     answer_rows_b = {row["id"]: row for row in load_jsonl(args.answers_b)} if args.answers_b else None
     tasks = []
     for card in cards.values():
-        if card["task"] not in {"KomodoProteinFold", "DragonProteinFolding"}:
+        if card["task"] != "KomodoProteinFold":
             continue
         hidden = card["hidden_answer"]["answer"]
-        model_input = card["question"]["model_input"]
         target_structure = extract_structure_payload(hidden)
-        if not target_structure:
-            target_structure = structure_payload(load_chain_pdb(
-                hidden.get("pdb_id", model_input.get("pdb_id")),
-                hidden.get("chain_id", model_input.get("chain_id")),
-            ), "pdb")
         target_coord_map, _ = predicted_protein_coordinates(hidden)
         target_coords = coordinates_to_rows(target_coord_map)
         task = {
             "id": card["id"],
             "task": card["task"],
-            "pdb_id": hidden.get("pdb_id", model_input.get("pdb_id")),
-            "chain_id": hidden.get("chain_id", model_input.get("chain_id")),
+            "pdb_id": hidden.get("pdb_id"),
+            "chain_id": hidden.get("chain_id"),
             "target_coordinates": target_coords,
             "target_structure": target_structure,
         }
@@ -783,35 +777,6 @@ def align_structure_payload(structure, moving_coords, target_coords):
         return None
     aligned_text = transform_pdb_coordinates(structure["text"], transform)
     return structure_payload(aligned_text, "pdb")
-
-
-def load_chain_pdb(pdb_id, chain_id):
-    if not pdb_id or not chain_id:
-        return ""
-    path = Path("data/protein_structures/raw_pdb") / f"{str(pdb_id).lower()}.pdb"
-    if not path.exists():
-        return ""
-
-    lines = []
-    saw_model = False
-    for raw in path.read_text(errors="ignore").splitlines():
-        record = raw[:6].strip()
-        if record == "MODEL":
-            if saw_model:
-                break
-            saw_model = True
-            continue
-        if record == "ENDMDL" and saw_model:
-            break
-        if record in {"ATOM", "HETATM"} and len(raw) > 21 and raw[21] == chain_id:
-            lines.append(raw)
-        elif record == "TER" and lines:
-            lines.append(raw)
-            break
-    if not lines:
-        return ""
-    lines.append("END")
-    return "\n".join(lines)
 
 
 def protein_explanation(result):

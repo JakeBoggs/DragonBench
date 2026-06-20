@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dragonbench.io import load_jsonl
+from dragonbench.logging import log_score_event
 from dragonbench.scoring import score_answer
 
 
@@ -14,6 +15,8 @@ def main() -> None:
     parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
     parser.add_argument("--answers", required=True, help="JSONL with fields id and answer.")
     parser.add_argument("--out", default=None)
+    parser.add_argument("--no-log", action="store_true", help="Do not append score events to logs/score_events.jsonl.")
+    parser.add_argument("--log-answer-preview", action="store_true", help="Include truncated answer previews in score logs.")
     args = parser.parse_args()
 
     cards = {row["id"]: row for row in load_jsonl(args.dataset)}
@@ -21,6 +24,8 @@ def main() -> None:
     for item in load_jsonl(args.answers):
         card = cards[item["id"]]
         result = score_answer(card, item.get("answer"))
+        if not args.no_log:
+            log_score_event(card, result, item.get("answer"), include_answer_preview=args.log_answer_preview)
         rows.append({
             "id": item["id"],
             "task": card["task"],

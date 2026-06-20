@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from dragonbench.io import load_jsonl
+from dragonbench.logging import log_score_event
 from dragonbench.prompts import render_prompt
 from dragonbench.scoring import score_answer
 
@@ -22,8 +23,7 @@ async def dragonbench_question(question_id: str):
     card = cards[question_id]
     answer = yield render_prompt(card)
     result = score_answer(card, answer)
-    # Missing hidden answers are intentionally unscored so candidate cards do not
-    # create fake rewards before source extraction and human review.
+    log_score_event(card, result, answer)
     yield result.reward
 
 

@@ -44,6 +44,31 @@ python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl
 
 The smoke file answers every task from the hidden answer and should score near `1.0`.
 
+## Score Logs
+
+Scoring appends JSONL events to `logs/score_events.jsonl` by default. Each event includes:
+
+- task id
+- task family
+- lineage
+- reward
+- primary scorer
+- secondary scorers
+- subscores
+- scorer info
+- answer preview, truncated to 500 characters, for HUD task runs
+
+Hidden answers are not logged by the HUD harness. Local `scripts/score_answers.py` does not log answer previews by default, because local answer files may contain oracle/debug answers. Use `--log-answer-preview` only for non-secret model answers.
+
+Controls:
+
+```bash
+DRAGONBENCH_SCORE_LOG=0 hud eval tasks.py claude --task-ids 20 -y
+DRAGONBENCH_SCORE_LOG_PATH=logs/my_run.jsonl hud eval tasks.py claude --task-ids 20 -y
+python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl --no-log
+python3 scripts/score_answers.py --answers model_answers.jsonl --log-answer-preview
+```
+
 ## Scoring Design
 
 The scorer lives in `dragonbench/scoring.py`.

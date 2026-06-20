@@ -50,10 +50,16 @@ def score_answer(card: dict[str, Any], answer: Any) -> ScoreResult:
 
     task = card.get("task")
     expected = hidden["answer"]
-    if task == "DragonGeneParse":
-        return score_gene_parse(parsed or {}, expected)
+    if task in {"DragonGeneParse", "DragonGeneParseIntrons"}:
+        return score_gene_parse_introns(parsed or {}, expected) if task == "DragonGeneParseIntrons" else score_gene_parse(parsed or {}, expected)
+    if task == "DragonAnolePromoterExpression":
+        return score_promoter_expression_ranking(parsed or {}, expected)
+    if task == "DragonProteinFolding":
+        return score_protein_folding(parsed or {}, expected)
     if task == "DragonTFBind":
         return score_tf_bind(parsed or {}, expected)
+    if task == "DragonRNAFolding":
+        return score_rna_folding(parsed or {}, expected)
     if task == "DragonEnhancerTissue":
         return score_enhancer_tissue(parsed or {}, expected)
     if task == "DragonVariantEffect":
@@ -106,6 +112,67 @@ def score_gene_parse(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreRes
     )
 
 
+def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
+    intron = interval_f1(pred.get("introns", []), expected.get("introns", []), iou_threshold=0.8)
+    boundary = interval_boundary_score(pred.get("introns", []), expected.get("introns", []))
+    count_score = count_accuracy(len(pred.get("introns", [])), len(expected.get("introns", [])))
+    reward = 0.75 * intron["f1"] + 0.15 * boundary + 0.10 * count_score
+    return ScoreResult(
+        clamp01(reward),
+        "scored",
+        {
+            "intron_interval_f1_at_iou_0_8": intron["f1"],
+            "precision": intron["precision"],
+            "recall": intron["recall"],
+            "intron_boundary_score": boundary,
+            "intron_count_accuracy": count_score,
+        },
+        {"matched_introns": intron["matched"], "n_pred": len(pred.get("introns", [])), "n_true": len(expected.get("introns", []))}
+    )
+
+
+def score_promoter_expression_ranking(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
+    true_order = [str(x) for x in expected.get("ordered_tissues", [])]
+    pred_order = [str(x) for x in pred.get("ordered_tissues", [])]
+    if not true_order:
+        return ScoreResult(0.0, "unscored_missing_true_ranking", {}, {})
+    ndcg = ndcg_for_order(pred_order, expected.get("expression", {}), true_order)
+    top1 = 1.0 if pred_order and pred_order[0] == true_order[0] else 0.0
+    spearman = (spearman_order_corr(pred_order, true_order) + 1.0) / 2.0
+    completeness = len(set(pred_order).intersection(true_order)) / len(true_order)
+    reward = 0.55 * ndcg + 0.20 * top1 + 0.20 * spearman + 0.05 * completeness
+    return ScoreResult(
+        clamp01(reward),
+        "scored",
+        {
+            "ndcg_at_all_tissues": ndcg,
+            "top1_tissue_accuracy": top1,
+            "spearman_rank_scaled": clamp01(spearman),
+            "ranking_completeness": completeness,
+        },
+        {"n_pred": len(pred_order), "n_true": len(true_order), "true_top1": true_order[0]}
+    )
+
+
+def score_protein_folding(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
+    pred_contacts = normalize_contacts(pred.get("contacts", []))
+    true_contacts = normalize_contacts(expected.get("contacts", []))
+    contact = pair_f1(pred_contacts, true_contacts)
+    count_score = count_accuracy(len(pred_contacts), len(true_contacts))
+    reward = 0.9 * contact["f1"] + 0.1 * count_score
+    return ScoreResult(
+        clamp01(reward),
+        "scored",
+        {
+            "contact_f1_long_range_tolerance_0": contact["f1"],
+            "contact_precision": contact["precision"],
+            "contact_recall": contact["recall"],
+            "contact_count_accuracy": count_score,
+        },
+        {"matched_contacts": contact["matched"], "n_pred": len(pred_contacts), "n_true": len(true_contacts)}
+    )
+
+
 def score_enhancer_tissue(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
     pred_tissues = pred.get("tissues", {})
     true_tissues = expected.get("tissues", {})
@@ -140,6 +207,29 @@ def score_variant_effect(pred: dict[str, Any], expected: dict[str, Any]) -> Scor
 
 def score_phenotype_gene(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
     return score_label_probability_map(pred.get("phenotypes", {}), expected.get("phenotypes", {}))
+
+
+def score_rna_folding(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
+    pred_dot = str(pred.get("dot_bracket", ""))
+    true_dot = str(expected.get("dot_bracket", ""))
+    pred_pairs = dot_bracket_to_pairs(pred_dot)
+    true_pairs = normalize_contacts(expected.get("base_pairs", [])) if expected.get("base_pairs") else dot_bracket_to_pairs(true_dot)
+    pair = pair_f1(pred_pairs, true_pairs)
+    exact = 1.0 if pred_dot == true_dot else 0.0
+    length_valid = 1.0 if len(pred_dot) == len(true_dot) else 0.0
+    reward = 0.8 * pair["f1"] + 0.15 * exact + 0.05 * length_valid
+    return ScoreResult(
+        clamp01(reward),
+        "scored",
+        {
+            "base_pair_f1": pair["f1"],
+            "base_pair_precision": pair["precision"],
+            "base_pair_recall": pair["recall"],
+            "exact_dot_bracket_match": exact,
+            "length_validity": length_valid,
+        },
+        {"matched_base_pairs": pair["matched"], "n_pred_pairs": len(pred_pairs), "n_true_pairs": len(true_pairs)}
+    )
 
 
 def score_label_probability_map(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
@@ -226,6 +316,96 @@ def center_distance_score(pred: list[dict[str, Any]], true: list[dict[str, Any]]
         distances.append(best)
     mean_distance = sum(distances) / len(distances)
     return 1.0 / (1.0 + mean_distance)
+
+
+def interval_boundary_score(pred: list[dict[str, Any]], true: list[dict[str, Any]]) -> float:
+    pred_clean = [x for x in (normalize_interval(y) for y in pred) if x]
+    true_clean = [x for x in (normalize_interval(y) for y in true) if x]
+    if not pred_clean and not true_clean:
+        return 1.0
+    if not pred_clean or not true_clean:
+        return 0.0
+    errors = []
+    for t in true_clean:
+        best = min(abs(p["start"] - t["start"]) + abs(p["end"] - t["end"]) for p in pred_clean)
+        errors.append(best / 2.0)
+    mean_error = sum(errors) / len(errors)
+    return 1.0 / (1.0 + mean_error)
+
+
+def count_accuracy(pred_count: int, true_count: int) -> float:
+    if true_count == 0:
+        return 1.0 if pred_count == 0 else 0.0
+    return clamp01(1.0 - abs(pred_count - true_count) / max(true_count, 1))
+
+
+def normalize_contacts(items: list[Any]) -> set[tuple[int, int]]:
+    pairs: set[tuple[int, int]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        try:
+            i = int(item["i"])
+            j = int(item["j"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if i == j:
+            continue
+        pairs.add((min(i, j), max(i, j)))
+    return pairs
+
+
+def pair_f1(pred: set[tuple[int, int]], true: set[tuple[int, int]]) -> dict[str, float]:
+    matched = len(pred.intersection(true))
+    precision = matched / len(pred) if pred else (1.0 if not true else 0.0)
+    recall = matched / len(true) if true else (1.0 if not pred else 0.0)
+    return {"precision": precision, "recall": recall, "f1": f1(precision, recall), "matched": matched}
+
+
+def dot_bracket_to_pairs(dot: str) -> set[tuple[int, int]]:
+    stack: list[int] = []
+    pairs: set[tuple[int, int]] = set()
+    for idx, char in enumerate(dot):
+        if char == "(":
+            stack.append(idx)
+        elif char == ")" and stack:
+            pairs.add((stack.pop(), idx))
+    return pairs
+
+
+def ndcg_for_order(pred_order: list[str], relevance: dict[str, Any], true_order: list[str]) -> float:
+    rel = {}
+    for rank, label in enumerate(true_order):
+        fallback = len(true_order) - rank
+        rel[label] = float(relevance.get(label, fallback)) if is_number(relevance.get(label, fallback)) else float(fallback)
+    dcg = dcg_for_labels(pred_order, rel)
+    ideal = dcg_for_labels(sorted(true_order, key=lambda label: rel[label], reverse=True), rel)
+    return dcg / ideal if ideal else 0.0
+
+
+def dcg_for_labels(labels: list[str], rel: dict[str, float]) -> float:
+    total = 0.0
+    seen: set[str] = set()
+    for rank, label in enumerate(labels, start=1):
+        if label in seen:
+            continue
+        seen.add(label)
+        gain = rel.get(label, 0.0)
+        total += gain / math.log2(rank + 1)
+    return total
+
+
+def spearman_order_corr(pred_order: list[str], true_order: list[str]) -> float:
+    labels = list(dict.fromkeys(true_order))
+    n = len(labels)
+    if n < 2:
+        return 1.0
+    missing_rank = n + 1
+    true_ranks = {label: idx + 1 for idx, label in enumerate(true_order)}
+    pred_ranks = {label: idx + 1 for idx, label in enumerate(pred_order)}
+    a = [float(pred_ranks.get(label, missing_rank)) for label in labels]
+    b = [float(true_ranks[label]) for label in labels]
+    return pearson_corr(a, b)
 
 
 def mean_confidence_score(pred: list[dict[str, Any]]) -> float:
@@ -331,4 +511,3 @@ def is_int_like(value: Any) -> bool:
 
 def clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
-

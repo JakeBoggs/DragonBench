@@ -166,12 +166,11 @@ Slide 6 - Specialized models vs general models
 Slide 7 - Analysis
 
 - Title: "Analysis"
-- Subtitle: "General models are improving, but there is still a long way to go."
+- Subtitle: "General models are improving, but there's still a long way to go."
 - Use four insight cards:
   - "Structure gap" with protein/fold icon and mini chart: "Best LLM C-alpha lDDT 0.301"
   - "RNA remains brittle" with RNA hairpin icon and mini chart: "Best score 0.200"
-  - "No uniform winner" with split bar icon: "Five task leaders"
-  - "Catching-up signal" with rising bars icon: "Gemini 0.331 and GPT-5.5 0.309 overall"
+  - "No uniform winner" with bar charts: "Five task leaders"
 - Goal: show that general models are still behind, while noting early signs of progress.
 
 Slide 8 - So when dragons?

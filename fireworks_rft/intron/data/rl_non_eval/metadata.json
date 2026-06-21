@@ -1,0 +1,8 @@
+{
+  "dataset": "data/source/anole_refseq/gene_parse_training_records.jsonl",
+  "n_train": 200,
+  "n_eval": 40,
+  "input_key": "messages",
+  "label_key": "label",
+  "target": "AnoleGeneParse"
+}

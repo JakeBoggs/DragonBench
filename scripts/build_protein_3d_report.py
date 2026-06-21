@@ -1,8 +1,9 @@
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -777,64 +778,25 @@ def structure_payload(text, fmt):
 
 
 def kabsch_transform(moving, target):
-    moving_centroid = centroid(moving)
-    target_centroid = centroid(target)
-    covariance = [[0.0, 0.0, 0.0] for _ in range(3)]
-    for p, q in zip(moving, target):
-        px, py, pz = (p[0] - moving_centroid[0], p[1] - moving_centroid[1], p[2] - moving_centroid[2])
-        qx, qy, qz = (q[0] - target_centroid[0], q[1] - target_centroid[1], q[2] - target_centroid[2])
-        covariance[0][0] += px * qx
-        covariance[0][1] += px * qy
-        covariance[0][2] += px * qz
-        covariance[1][0] += py * qx
-        covariance[1][1] += py * qy
-        covariance[1][2] += py * qz
-        covariance[2][0] += pz * qx
-        covariance[2][1] += pz * qy
-        covariance[2][2] += pz * qz
-
-    rotation = quaternion_rotation(covariance)
-    if rotation is None:
+    moving_array = np.asarray(moving, dtype=float)
+    target_array = np.asarray(target, dtype=float)
+    if moving_array.shape != target_array.shape or moving_array.ndim != 2 or moving_array.shape[1] != 3:
         return None
-    return {"rotation": rotation, "moving_centroid": moving_centroid, "target_centroid": target_centroid}
-
-
-def centroid(points):
-    n = max(len(points), 1)
-    return (
-        sum(p[0] for p in points) / n,
-        sum(p[1] for p in points) / n,
-        sum(p[2] for p in points) / n,
-    )
-
-
-def quaternion_rotation(s):
-    sxx, sxy, sxz = s[0]
-    syx, syy, syz = s[1]
-    szx, szy, szz = s[2]
-    matrix = [
-        [sxx + syy + szz, syz - szy, szx - sxz, sxy - syx],
-        [syz - szy, sxx - syy - szz, sxy + syx, szx + sxz],
-        [szx - sxz, sxy + syx, -sxx + syy - szz, syz + szy],
-        [sxy - syx, szx + sxz, syz + szy, -sxx - syy + szz],
-    ]
-    quat = [1.0, 0.0, 0.0, 0.0]
-    for _ in range(64):
-        next_quat = [sum(matrix[row][col] * quat[col] for col in range(4)) for row in range(4)]
-        norm = math.sqrt(sum(value * value for value in next_quat))
-        if norm == 0 or not math.isfinite(norm):
-            return None
-        quat = [value / norm for value in next_quat]
-    return rotation_matrix_from_quaternion(quat)
-
-
-def rotation_matrix_from_quaternion(quat):
-    w, x, y, z = quat
-    return [
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
-    ]
+    moving_centroid = moving_array.mean(axis=0)
+    target_centroid = target_array.mean(axis=0)
+    moving_centered = moving_array - moving_centroid
+    target_centered = target_array - target_centroid
+    covariance = moving_centered.T @ target_centered
+    u, _, vt = np.linalg.svd(covariance)
+    rotation = vt.T @ u.T
+    if np.linalg.det(rotation) < 0:
+        vt[-1, :] *= -1
+        rotation = vt.T @ u.T
+    return {
+        "rotation": rotation.tolist(),
+        "moving_centroid": moving_centroid.tolist(),
+        "target_centroid": target_centroid.tolist(),
+    }
 
 
 def transform_point(point, transform):

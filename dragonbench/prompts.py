@@ -16,10 +16,12 @@ Genomic sequence ({len(sequence)} bases):
 {sequence}
 
 Required answer format:
-{{"introns":[{{"start":[start],"end":[end]}}]}}
+- Return a JSON object with exactly one top-level key: "introns".
+- "introns" must be a list.
+- Each intron item must have exactly two integer fields: "start" and "end".
 
-Return only the JSON object, with your predicted coordinates replacing the
-example values. Do not use Markdown or add explanatory text."""
+Return only the JSON object containing your predicted intron coordinates. Do not use Markdown
+or add explanatory text."""
 
 
 def render_anole_promoter_expression_prompt(card: dict[str, Any]) -> str:

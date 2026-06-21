@@ -1,6 +1,47 @@
 from __future__ import annotations
 
+import json
 from typing import Any
+
+
+def _extract_submit_answer(trace: Any) -> Any | None:
+    for step in reversed(getattr(trace, "steps", [])):
+        call = getattr(step, "call", None)
+        if call is None or getattr(call, "name", None) != "submit_answer":
+            continue
+        arguments = getattr(call, "arguments", None)
+        if not isinstance(arguments, dict):
+            continue
+        answer_json = arguments.get("answer_json")
+        if isinstance(answer_json, str) and answer_json.strip():
+            try:
+                parsed_answer = json.loads(answer_json)
+            except json.JSONDecodeError:
+                return answer_json
+            return parsed_answer if isinstance(parsed_answer, dict) else answer_json
+        answer = arguments.get("answer", arguments)
+        if isinstance(answer, dict):
+            return answer
+    return None
+
+
+def _error_grade(reason: str):
+    from hud.eval.run import Grade
+
+    return Grade(
+        reward=0.0,
+        done=True,
+        content=reason,
+        info={"reason": reason, "phase": "agent loop"},
+        is_error=True,
+        raw={
+            "score": 0.0,
+            "done": True,
+            "content": reason,
+            "info": {"reason": reason, "phase": "agent loop"},
+            "isError": True,
+        },
+    )
 
 
 def install_hud_runtime_isolation() -> None:
@@ -14,7 +55,7 @@ def install_hud_runtime_isolation() -> None:
     """
     try:
         from hud.agents.tool_agent import ToolAgent
-        from hud.eval.run import Grade, Run
+        from hud.eval.run import Run
     except ImportError:
         return
 
@@ -26,6 +67,9 @@ def install_hud_runtime_isolation() -> None:
 
     async def isolated_loop(self: Any, run: Any, state: Any, **kwargs: Any) -> None:
         await original_loop(self, run, state, **kwargs)
+        submitted_answer = _extract_submit_answer(run.trace)
+        if submitted_answer is not None:
+            run.trace.extra["submitted_answer"] = submitted_answer
         if run.trace.extra.get("skip_grade_reason"):
             return
         if run.trace.status != "error":
@@ -42,22 +86,23 @@ def install_hud_runtime_isolation() -> None:
         if skip_grade_reason:
             reason = str(skip_grade_reason)
             self.trace.status = "error"
-            self.grade = Grade(
-                reward=0.0,
-                done=True,
-                content=reason,
-                info={"reason": reason, "phase": "agent loop"},
-                is_error=True,
-                raw={
-                    "score": 0.0,
-                    "done": True,
-                    "content": reason,
-                    "info": {"reason": reason, "phase": "agent loop"},
-                    "isError": True,
-                },
-            )
+            self.grade = _error_grade(reason)
             return False
-        return await original_exit(self, exc_type, exc, tb)
+        submitted_answer = self.trace.extra.get("submitted_answer")
+        if submitted_answer is None:
+            submitted_answer = _extract_submit_answer(self.trace)
+        if submitted_answer is not None:
+            original_content = self.trace.content
+            self.trace.content = submitted_answer
+            try:
+                return await original_exit(self, exc_type, exc, tb)
+            finally:
+                self.trace.content = original_content
+        reason = "agent finished without calling submit_answer"
+        self.trace.status = "error"
+        self.grade = _error_grade(reason)
+        self.trace.extra["skip_grade_reason"] = reason
+        return False
 
     ToolAgent._loop = isolated_loop
     Run.__aexit__ = isolated_exit

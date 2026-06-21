@@ -172,6 +172,38 @@ For each task, the environment yields a structured grade payload:
 
 Protein tasks may also include visualization links in `info` when configured.
 
+## Modal SFT/RL
+
+The post-training scaffold is documented in [docs/MODAL_RL.md](docs/MODAL_RL.md).
+Use the small-model smoke paths for iteration:
+
+```bash
+python scripts/build_promoter_sft_dataset.py --out-dir runs/promoter_sft_dataset
+python scripts/build_promoter_rl_dataset.py --out-dir runs/promoter_rl_dataset
+modal run modal_promoter_sft.py --smoke --n-train 1 --n-eval 1 --max-steps 1
+modal run modal_promoter_rl.py --smoke --no-eval-base --n-train 1 --n-eval 1 --num-rollout 1 --rollout-batch-size 1 --n-samples-per-prompt 1
+```
+
+Use SFT first, then GRPO for the 35B target:
+
+```bash
+modal run modal_promoter_sft.py --n-train 20 --n-eval 20 --num-train-epochs 1
+modal run modal_promoter_rl.py --n-train 20 --n-eval 20
+```
+
+The smoke SFT path uses `Qwen/Qwen3-0.6B` on one A10G. The smoke RL path uses
+`Qwen/Qwen3-1.7B` on one A100 to avoid requiring Modal RDMA. The 20-row 35B runs
+are still only plumbing checks until the promoter-expression training set is
+expanded and the eval audit is complete.
+
+## Fireworks RFT
+
+The Fireworks Eval Protocol scaffold for intron RFT is in
+[fireworks_rft/intron/README.md](fireworks_rft/intron/README.md). It reuses the
+DragonBench intron scorer, trains on non-eval intron post-training records, and
+is set up for direct managed RFT on `accounts/fireworks/models/gpt-oss-120b`
+with W&B observability.
+
 ## Protein 3D Reports
 
 The protein visualization uses vendored 3Dmol.js:

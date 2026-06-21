@@ -7,7 +7,7 @@ Create a 100-question genetics benchmark with 20 questions in each of five categ
 1. Anole gene parsing: identify intron spans inside genes.
 2. Anole promoter expression: rank tissues by expression from a 2 kb upstream sequence.
 3. Komodo dragon protein folding: generate an all-atom PDB/mmCIF structure from an amino-acid sequence.
-4. TF binding: given a transcription factor and 10 DNA sequences, predict which sequences bind.
+4. TF binding: given a transcription factor and 10 DNA sequences, predict relative binding probabilities.
 5. RNA folding: predict secondary structure for realistic RNA sequences.
 
 The focus is on selecting high-quality examples rather than maximizing dataset size.
@@ -236,14 +236,13 @@ Aim for structural diversity:
 
 ## Scoring
 
-Primary metrics:
+Primary metric:
 
-* TM-score;
-* lDDT.
+* C-alpha lDDT over reference residue pairs within 15 Å.
 
 Secondary metrics:
 
-* RMSD;
+* coordinate coverage;
 * structural completeness;
 * validity of the generated structure file.
 
@@ -253,7 +252,7 @@ Secondary metrics:
 
 ## Task
 
-Given one transcription factor protein sequence and 10 DNA sequences, predict which DNA sequences are bound by the transcription factor.
+Given one transcription factor protein sequence and 10 DNA sequences, predict relative binding probabilities for the DNA sequences.
 
 ## Input
 
@@ -318,11 +317,11 @@ Try to cover multiple TF families:
 
 ## Scoring
 
-Primary metrics:
+Primary metric:
 
-* AUROC;
-* AUPRC;
-* ranking accuracy.
+* chance-clipped Spearman rank correlation over predicted and reference binding probabilities.
+
+The answer must include exactly one probability for every candidate DNA sequence ID.
 
 ---
 

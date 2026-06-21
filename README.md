@@ -100,8 +100,8 @@ Current scoring functions:
 
 - Gene parsing: `max(0, 1 - Levenshtein(predicted spliced, true spliced) / (original length - true spliced length))`. Intron interval F1, boundary score, and count accuracy are diagnostics.
 - Promoter expression: chance-clipped Spearman rank correlation across nine tissues. Incomplete or duplicate rankings score zero.
-- Protein folding: coordinate coverage multiplied by local C-alpha distance-matrix similarity, with all-atom PDB/mmCIF validity and backbone completeness folded into the local structure score. Low residue coverage caps the reward.
-- TF binding: AUROC, AUPRC, ranking accuracy, and Brier score for probability tasks; interval F1 for interval tasks.
+- Protein folding: C-alpha lDDT over reference residue pairs within 15 Å. Missing predicted residues contribute zero to affected contacts; coordinate coverage, PDB/mmCIF validity, and backbone completeness are diagnostics.
+- TF binding: chance-clipped Spearman rank correlation across required binding probabilities. Every candidate DNA sequence ID must be present exactly once.
 - RNA folding: base-pair F1. The dot-bracket string must be balanced and match the RNA length.
 
 Score logs are written by default to:
@@ -374,6 +374,6 @@ node --check <(perl -0777 -ne 'print $1 if m#<script>\n(.*)\n  </script>#s' repo
 ## Current Caveats
 
 - The eval is a scoreable bootstrap set intended for human review, not a final locked benchmark.
-- Protein visualization supports all-atom structures, but scoring still uses a C-alpha extraction bridge until TM-score/lDDT-style scoring is integrated.
+- Protein visualization supports all-atom structures; scoring uses a C-alpha lDDT bridge until the fixture stores full all-atom reference coordinates.
 - HUD visualization links are URL-based metadata, not guaranteed inline artifacts on the HUD website.
 - Local visualization URLs only work locally; use a public base URL for hosted HUD demos.

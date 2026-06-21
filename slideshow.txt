@@ -40,6 +40,8 @@ Specialized models vs general models.
 
 What the results tell us.
 
+Training our own model.
+
 When dragons?
 
 Slide 1 prompt: Title
@@ -252,9 +254,59 @@ The overall message should be that general models perform better on ranking and 
 
 Use lots of whitespace. Keep it clean, analytical, and beautiful. Add refined fantasy-science illustrations in the corners, such as a pale dragon, telescope, books, flask, compass, DNA emblem, or vines.
 
-Slide 8 prompt: When dragons?
+Slide 8 prompt: Training our own model
 
-Create Slide 8 of the same presentation deck. Match the light fantasy-science style: pale parchment, navy title, sage subtitle, gold ornamentation, soft watercolor illustration, refined chart design.
+Create Slide 8 of the same presentation deck. Match the light fantasy-science aesthetic: pale parchment background, refined navy serif title, sage text, warm gold dividers, soft watercolor biological illustrations, and subtle dragon manuscript motifs.
+
+The slide title should read:
+
+"Training our own model"
+
+Subtitle:
+
+"DragonBench becomes the reward signal"
+
+Design this as an execution slide showing how the benchmark turns into a post-training loop. On the left, include a clean pipeline with five elegant illustrated steps:
+
+"DragonBench tasks" -> "SFT warm start" -> "Reward-guided training" -> "DragonBench-tuned model" -> "Held-out eval"
+
+Use small icons or illustrations for each step: benchmark scrolls or cards, DNA/lab notebook, gold reward signal, pale dragon/model emblem, and a judge scale or held-out test set.
+
+On the right, include a polished reward-over-training line chart labeled:
+
+"Mean reward during training (dummy data)"
+
+Use clearly visible placeholder points:
+
+Step 0: 0.18
+Step 250: 0.24
+Step 500: 0.31
+Step 750: 0.38
+Step 1000: 0.46
+Step 1250: 0.53
+Step 1500: 0.58
+Step 1750: 0.62
+Step 2000: 0.66
+
+The x-axis should be "Training step." The y-axis should be "Mean reward." Add a soft uncertainty band and a faint dashed baseline at 0.18. Include a small chart note that reads "Dummy placeholder data" so the slide does not look like final experimental evidence.
+
+Add three concise callouts near the pipeline:
+
+"Train on non-eval tasks"
+
+"Reward exact biological outputs"
+
+"Measure generalization on held-out DragonBench"
+
+At the bottom, include one clean takeaway ribbon:
+
+"DragonBench is not just a scoreboard - it is the training signal for specialized biological design models."
+
+Keep the slide premium, technical, and optimistic. Use lots of whitespace, large readable text, a light dragon/DNA motif in the corner, and a reward chart that looks startup-deck-ready without becoming dense.
+
+Slide 9 prompt: When dragons?
+
+Create Slide 9 of the same presentation deck. Match the light fantasy-science style: pale parchment, navy title, sage subtitle, gold ornamentation, soft watercolor illustration, refined chart design.
 
 The slide title should read:
 

@@ -93,25 +93,20 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
         )
     if task == "KomodoProteinFold":
         return (
-            "Reward = coordinate_coverage * local_structure_score. "
-            "local_structure_score = 0.90 * distance_matrix_rmsd_score + 0.05 * structure_validity + 0.05 * backbone_atom_completeness. "
-            "distance_matrix_rmsd_score = 1 / (1 + dRMSD / 2), where dRMSD compares all pairwise C-alpha distances and is rotation/translation invariant. "
-            f"Values: dRMSD_score={s['distance_matrix_rmsd_score']:.3f}, "
+            "Reward = C-alpha lDDT over reference residue pairs within 15 Å; missing predicted residues contribute zero for affected pairs. "
+            "Each pair gets fractional credit for distance errors under 0.5, 1, 2, and 4 Å. "
+            f"Values: ca_lDDT={s['ca_lddt']:.3f}, "
             f"coverage={s['coordinate_coverage']:.3f}, "
-            f"local_structure={s['local_structure_score']:.3f}, "
             f"validity={s['structure_validity']:.3f}, "
             f"backbone={s['backbone_atom_completeness']:.3f}, "
-            f"dRMSD={s['drmsd_angstrom']:.3f}, "
-            f"mean_distance_error={s['mean_distance_error_angstrom']:.3f}, "
+            f"contacts={s['lddt_evaluated_contacts']:.0f}/{s['lddt_reference_contacts']:.0f}, "
             f"reward={result.reward:.3f}."
         )
     if task == "DragonTFBind":
         return (
-            "Reward = 0.40 * AUROC + 0.35 * AUPRC + 0.20 * ranking_accuracy + 0.05 * brier_score. "
-            f"Values: AUROC={s['auroc']:.3f}, "
-            f"AUPRC={s['auprc']:.3f}, "
-            f"ranking={s['ranking_accuracy']:.3f}, "
-            f"brier={s['brier_score']:.3f}, "
+            "A valid answer must provide one probability for every candidate DNA sequence ID. "
+            "Reward = max(0, Spearman rank correlation) over predicted and reference binding probabilities. "
+            f"Values: spearman={s['spearman_rank_correlation']:.3f}, "
             f"reward={result.reward:.3f}."
         )
     if task == "RNAFold":

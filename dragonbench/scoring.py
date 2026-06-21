@@ -12,6 +12,10 @@ class ScoreResult:
     info: dict[str, Any]
 
 
+LDDT_DISTANCE_CUTOFF_ANGSTROM = 15.0
+LDDT_ERROR_THRESHOLDS_ANGSTROM = (0.5, 1.0, 2.0, 4.0)
+
+
 def parse_model_json(answer: Any) -> tuple[dict[str, Any] | None, str | None]:
     if isinstance(answer, dict):
         return answer, None
@@ -77,9 +81,6 @@ def score_tf_bind(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult
         if not is_probability(value):
             return invalid_hidden_answer("hidden binding probability must be a number from 0 through 1", sequence_id=seq_id)
         true_values.append(float(value))
-    y_true = [1 if value >= 0.5 else 0 for value in true_values]
-    if sum(y_true) == 0 or sum(y_true) == len(y_true):
-        return invalid_hidden_answer("TF binding hidden labels must include both positive and negative examples")
     if len(set(true_values)) < 2:
         return invalid_hidden_answer("TF binding hidden probabilities must not all be identical")
 
@@ -102,21 +103,15 @@ def score_tf_bind(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult
             return invalid_answer("each binding probability must be a number from 0 through 1", sequence_id=seq_id)
         y_score.append(float(value))
 
-    auroc = binary_auroc(y_true, y_score)
-    auprc = average_precision(y_true, y_score)
-    ranking = pairwise_score_ranking_accuracy(true_values, y_score)
-    brier = 1.0 - sum((score - truth) ** 2 for truth, score in zip(true_values, y_score)) / len(ids)
-    reward = 0.40 * auroc + 0.35 * auprc + 0.20 * ranking + 0.05 * brier
+    spearman = spearman_score_corr(y_score, true_values)
+    reward = max(0.0, spearman)
     return ScoreResult(
         clamp01(reward),
         "scored",
         {
-            "auroc": auroc,
-            "auprc": auprc,
-            "ranking_accuracy": ranking,
-            "brier_score": clamp01(brier),
+            "spearman_rank_correlation": spearman,
         },
-        {"n_pred": len(pred_probs), "n_true": len(ids), "positives": sum(y_true)}
+        {"n_pred": len(pred_probs), "n_true": len(ids)}
     )
 
 
@@ -235,29 +230,31 @@ def score_protein_folding(pred: dict[str, Any], expected: dict[str, Any]) -> Sco
             n_pred=len(pred_coords),
             **structure_info,
         )
-    stats = distance_matrix_stats(pred_coords, true_coords, common)
+    lddt_stats, lddt_error = ca_lddt_stats(pred_coords, true_coords)
+    if lddt_error:
+        return invalid_hidden_answer(lddt_error)
     coverage = len(common) / len(true_coords)
-    drmsd_score = 1.0 / (1.0 + stats["drmsd"] / 2.0)
-    local_structure_score = (
-        0.90 * drmsd_score
-        + 0.05 * structure_info["validity"]
-        + 0.05 * structure_info["backbone_completeness"]
-    )
-    reward = coverage * local_structure_score
+    reward = lddt_stats["ca_lddt"]
     return ScoreResult(
         clamp01(reward),
         "scored",
         {
-            "distance_matrix_rmsd_score": drmsd_score,
+            "ca_lddt": lddt_stats["ca_lddt"],
             "coordinate_coverage": coverage,
-            "coverage_weighted_structure_score": clamp01(reward),
-            "local_structure_score": clamp01(local_structure_score),
             "structure_validity": structure_info["validity"],
             "backbone_atom_completeness": structure_info["backbone_completeness"],
-            "drmsd_angstrom": stats["drmsd"],
-            "mean_distance_error_angstrom": stats["mean_abs_distance_error"],
+            "lddt_reference_contacts": lddt_stats["reference_contacts"],
+            "lddt_evaluated_contacts": lddt_stats["evaluated_contacts"],
+            "lddt_missing_contacts": lddt_stats["missing_contacts"],
+            "lddt_distance_cutoff_angstrom": LDDT_DISTANCE_CUTOFF_ANGSTROM,
         },
-        {"overlap": len(common), "n_pred": len(pred_coords), "n_true": len(true_coords), **structure_info}
+        {
+            "overlap": len(common),
+            "n_pred": len(pred_coords),
+            "n_true": len(true_coords),
+            "lddt_thresholds_angstrom": list(LDDT_ERROR_THRESHOLDS_ANGSTROM),
+            **structure_info,
+        }
     )
 
 
@@ -507,24 +504,38 @@ def backbone_atom_completeness(atom_stats: dict[tuple[str, str, str], set[str]])
     return sum(len(required.intersection(atoms)) / len(required) for atoms in atom_stats.values()) / len(atom_stats)
 
 
-def distance_matrix_stats(
+def ca_lddt_stats(
     pred: dict[int, tuple[float, float, float]],
     true: dict[int, tuple[float, float, float]],
-    indices: list[int],
-) -> dict[str, float]:
-    squared_errors = []
-    abs_errors = []
+) -> tuple[dict[str, float], str | None]:
+    reference_contacts = 0
+    evaluated_contacts = 0
+    score_sum = 0.0
+    indices = sorted(true)
     for a_pos, i in enumerate(indices):
         for j in indices[a_pos + 1:]:
-            pred_d = euclidean(pred[i], pred[j])
             true_d = euclidean(true[i], true[j])
-            error = pred_d - true_d
-            squared_errors.append(error * error)
-            abs_errors.append(abs(error))
+            if true_d > LDDT_DISTANCE_CUTOFF_ANGSTROM:
+                continue
+            reference_contacts += 1
+            if i not in pred or j not in pred:
+                continue
+            evaluated_contacts += 1
+            pred_d = euclidean(pred[i], pred[j])
+            distance_error = abs(pred_d - true_d)
+            score_sum += sum(
+                1.0
+                for threshold in LDDT_ERROR_THRESHOLDS_ANGSTROM
+                if distance_error <= threshold
+            ) / len(LDDT_ERROR_THRESHOLDS_ANGSTROM)
+    if reference_contacts == 0:
+        return {}, "KomodoProteinFold reference coordinates contain no C-alpha contacts within the lDDT cutoff"
     return {
-        "drmsd": math.sqrt(sum(squared_errors) / len(squared_errors)),
-        "mean_abs_distance_error": sum(abs_errors) / len(abs_errors),
-    }
+        "ca_lddt": score_sum / reference_contacts,
+        "reference_contacts": reference_contacts,
+        "evaluated_contacts": evaluated_contacts,
+        "missing_contacts": reference_contacts - evaluated_contacts,
+    }, None
 
 
 def euclidean(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
@@ -619,47 +630,23 @@ def spearman_order_corr(pred_order: list[str], true_order: list[str]) -> float:
     return pearson_corr(a, b)
 
 
-def pairwise_score_ranking_accuracy(true_scores: list[float], pred_scores: list[float]) -> float:
-    total = 0
-    correct = 0.0
-    for i in range(len(true_scores)):
-        for j in range(i + 1, len(true_scores)):
-            if true_scores[i] == true_scores[j]:
-                continue
-            total += 1
-            true_cmp = true_scores[i] > true_scores[j]
-            if pred_scores[i] == pred_scores[j]:
-                correct += 0.5
-            elif (pred_scores[i] > pred_scores[j]) == true_cmp:
-                correct += 1.0
-    return correct / total
+def spearman_score_corr(pred_scores: list[float], true_scores: list[float]) -> float:
+    return pearson_corr(average_ranks(pred_scores), average_ranks(true_scores))
 
 
-def average_precision(y_true: list[int], y_score: list[float]) -> float:
-    positives = sum(y_true)
-    order = sorted(range(len(y_score)), key=lambda i: y_score[i], reverse=True)
-    hits = 0
-    total = 0.0
-    for rank, idx in enumerate(order, start=1):
-        if y_true[idx]:
-            hits += 1
-            total += hits / rank
-    return total / positives
-
-
-def binary_auroc(y_true: list[int], y_score: list[float]) -> float:
-    positives = [score for label, score in zip(y_true, y_score) if label == 1]
-    negatives = [score for label, score in zip(y_true, y_score) if label == 0]
-    total = 0
-    wins = 0.0
-    for pos in positives:
-        for neg in negatives:
-            total += 1
-            if pos > neg:
-                wins += 1.0
-            elif pos == neg:
-                wins += 0.5
-    return wins / total
+def average_ranks(values: list[float]) -> list[float]:
+    order = sorted(range(len(values)), key=lambda idx: values[idx])
+    ranks = [0.0] * len(values)
+    cursor = 0
+    while cursor < len(order):
+        end = cursor + 1
+        while end < len(order) and values[order[end]] == values[order[cursor]]:
+            end += 1
+        rank = (cursor + 1 + end) / 2.0
+        for pos in range(cursor, end):
+            ranks[order[pos]] = rank
+        cursor = end
+    return ranks
 
 
 def pearson_corr(a: list[float], b: list[float]) -> float:

@@ -161,7 +161,7 @@ def build_komodo_protein_fold(start):
                 "protein_name": structure["protein_name"],
                 "raw_pdb_path": structure["pdb_path"],
             },
-            {"primary": "distance_matrix_rmsd_score", "secondary": ["coordinate_coverage", "structure_validity", "backbone_atom_completeness"]},
+            {"primary": "ca_lddt", "secondary": ["coordinate_coverage", "structure_validity", "backbone_atom_completeness"]},
             "Protein folding tests concrete sequence-to-structure reasoning for reptile molecular machinery.",
         ))
     return rows
@@ -181,7 +181,7 @@ def build_tf_binding(start):
                 f"{record['matrix_id']} {record['tf_name']} UniProt {record['uniprot_id']}",
                 record["uniprot_id"],
             ),
-            "Given one transcription factor protein sequence and 10 DNA sequences, predict which DNA sequences are bound.",
+            "Given one transcription factor protein sequence and 10 DNA sequences, predict relative binding probabilities for the DNA sequences.",
             {"tf_sequence": record["tf_sequence"], "dna_candidates": record["dna_candidates"]},
             {"binding_probabilities": {"seq_id": "number_0_to_1"}},
             {
@@ -191,7 +191,7 @@ def build_tf_binding(start):
                 "uniprot_id": record["uniprot_id"],
                 "pfm": record["pfm"],
             },
-            {"primary": "auroc", "secondary": ["auprc", "ranking_accuracy"]},
+            {"primary": "spearman_rank_correlation", "secondary": []},
             "TF binding is the smallest scoreable proxy for sequence-level regulatory control.",
         ))
     return rows

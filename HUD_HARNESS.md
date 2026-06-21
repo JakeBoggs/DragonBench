@@ -89,8 +89,8 @@ Task scoring:
 
 - `AnoleGeneParse`: Levenshtein similarity normalized by ground-truth intron length; interval F1, boundary score, and intron count accuracy are diagnostics
 - `AnolePromoterExpression`: chance-clipped Spearman rank correlation; incomplete or duplicate rankings score zero
-- `KomodoProteinFold`: coordinate coverage multiplied by local all-atom PDB/mmCIF validity and C-alpha distance-matrix similarity. Low residue coverage caps the reward.
-- `DragonTFBind`: weighted AUROC, AUPRC, ranking accuracy, and Brier score over required binding probabilities
+- `KomodoProteinFold`: C-alpha lDDT over reference residue pairs within 15 Å. Missing predicted residues contribute zero to affected contacts; coverage, validity, and backbone completeness are diagnostics.
+- `DragonTFBind`: chance-clipped Spearman rank correlation over required binding probabilities; every candidate DNA sequence ID must be present exactly once
 - `RNAFold`: base-pair F1 over a valid, length-matched dot-bracket structure
 
 The scoring functions are deterministic, JSON-only, and avoid LLM judging.

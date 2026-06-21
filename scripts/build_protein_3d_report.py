@@ -280,29 +280,30 @@ HTML_TEMPLATE = """<!doctype html>
     const pdb = task.pdb_id ? ` · ${task.pdb_id} chain ${task.chain_id}` : '';
     let metrics;
     if (DATA.mode === 'compare') {
-      const deltaReward = Number(task.model_b.reward || 0) - Number(task.model_a.reward || 0);
-      const deltaDrmsd = Number(task.model_b.subscores.drmsd_angstrom || 0) - Number(task.model_a.subscores.drmsd_angstrom || 0);
+      const deltaReward = Number(task.model_b.reward) - Number(task.model_a.reward);
+      const deltaLddt = Number(task.model_b.subscores.ca_lddt) - Number(task.model_a.subscores.ca_lddt);
       document.getElementById('taskTitle').innerHTML =
         `<strong>${task.id}${pdb}</strong><div class="note">${DATA.model_a_name}: ${task.model_a.scoring_explanation} · ${DATA.model_b_name}: ${task.model_b.scoring_explanation}</div>`;
       metrics = [
         [`${DATA.model_a_name} reward`, task.model_a.reward],
         [`${DATA.model_b_name} reward`, task.model_b.reward],
         ['Reward delta', deltaReward],
-        [`${DATA.model_a_name} dRMSD`, task.model_a.subscores.drmsd_angstrom],
-        [`${DATA.model_b_name} dRMSD`, task.model_b.subscores.drmsd_angstrom],
-        ['dRMSD delta', deltaDrmsd],
+        [`${DATA.model_a_name} C-alpha lDDT`, task.model_a.subscores.ca_lddt],
+        [`${DATA.model_b_name} C-alpha lDDT`, task.model_b.subscores.ca_lddt],
+        ['lDDT delta', deltaLddt],
       ];
     } else {
       document.getElementById('taskTitle').innerHTML =
         `<strong>${task.id}${pdb}</strong><div class="note">${task.scoring_explanation}</div>`;
       metrics = [
         ['Reward', task.reward],
-        ['dRMSD score', task.subscores.distance_matrix_rmsd_score],
+        ['C-alpha lDDT', task.subscores.ca_lddt],
         ['Coverage', task.subscores.coordinate_coverage],
-        ['Overlap residues', task.info && task.info.overlap],
-        ['Pred / True residues', task.info ? `${task.info.n_pred || 0} / ${task.info.n_true || 0}` : null],
-        ['dRMSD', task.subscores.drmsd_angstrom],
-        ['Mean dist err', task.subscores.mean_distance_error_angstrom],
+        ['Overlap residues', task.info.overlap],
+        ['Pred / True residues', `${task.info.n_pred} / ${task.info.n_true}`],
+        ['Evaluated contacts', task.subscores.lddt_evaluated_contacts],
+        ['Reference contacts', task.subscores.lddt_reference_contacts],
+        ['Missing contacts', task.subscores.lddt_missing_contacts],
       ];
     }
     document.getElementById('metrics').innerHTML = metrics.map(([label, value]) =>
@@ -848,11 +849,10 @@ def protein_explanation(result):
     if result.status != "scored":
         return f"status={result.status}; reward={result.reward:.3f}; info={json.dumps(result.info, sort_keys=True)}"
     return (
-        f"reward=coverage * local_structure_score; "
+        f"reward=C-alpha lDDT; "
+        f"ca_lDDT={s['ca_lddt']:.3f}, "
         f"coverage={s['coordinate_coverage']:.3f}, "
-        f"local_structure={s['local_structure_score']:.3f}, "
-        f"dRMSD score={s['distance_matrix_rmsd_score']:.3f}, "
-        f"dRMSD={s['drmsd_angstrom']:.3f}"
+        f"contacts={s['lddt_evaluated_contacts']:.0f}/{s['lddt_reference_contacts']:.0f}"
     )
 
 

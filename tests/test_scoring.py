@@ -228,10 +228,11 @@ def test_komodo_protein_fold_scores_pdb_string():
     result = score_answer(card, {"pdb": pdb})
     assert result.status == "scored"
     assert result.reward == 1.0
+    assert result.subscores["ca_lddt"] == 1.0
     assert result.subscores["structure_validity"] == 1.0
 
 
-def test_protein_folding_low_coverage_caps_reward():
+def test_protein_folding_lddt_penalizes_missing_residues():
     card = {
         "task": "KomodoProteinFold",
         "hidden_answer": {
@@ -262,6 +263,8 @@ def test_protein_folding_low_coverage_caps_reward():
     result = score_answer(card, {"pdb": pdb})
     assert result.status == "scored"
     assert result.subscores["coordinate_coverage"] == 3 / 221
+    assert result.subscores["lddt_missing_contacts"] > result.subscores["lddt_evaluated_contacts"]
+    assert result.reward == result.subscores["ca_lddt"]
     assert result.reward < 0.02
 
 
@@ -282,8 +285,49 @@ def test_tf_bind_scores_binding_probabilities():
     }
     result = score_answer(card, {"binding_probabilities": {"seq_01": 0.9, "seq_02": 0.7, "seq_03": 0.1, "seq_04": 0.0}})
     assert result.status == "scored"
-    assert result.reward > 0.99
-    assert result.subscores["auroc"] == 1.0
+    assert result.reward > 0.999999
+    assert result.subscores["spearman_rank_correlation"] > 0.999999
+
+
+def test_tf_bind_spearman_handles_tied_binding_probabilities():
+    card = {
+        "task": "DragonTFBind",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "binding_probabilities": {
+                    "seq_01": 1.0,
+                    "seq_02": 1.0,
+                    "seq_03": 0.0,
+                    "seq_04": 0.0,
+                }
+            },
+        },
+    }
+    result = score_answer(card, {"binding_probabilities": {"seq_01": 0.8, "seq_02": 0.8, "seq_03": 0.1, "seq_04": 0.1}})
+    assert result.status == "scored"
+    assert result.reward > 0.999999
+    assert result.subscores["spearman_rank_correlation"] > 0.999999
+
+
+def test_tf_bind_negative_spearman_is_clipped_to_zero_reward():
+    card = {
+        "task": "DragonTFBind",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "binding_probabilities": {
+                    "seq_01": 1.0,
+                    "seq_02": 0.5,
+                    "seq_03": 0.0,
+                }
+            },
+        },
+    }
+    result = score_answer(card, {"binding_probabilities": {"seq_01": 0.0, "seq_02": 0.5, "seq_03": 1.0}})
+    assert result.status == "scored"
+    assert result.reward == 0.0
+    assert result.subscores["spearman_rank_correlation"] < -0.999999
 
 
 def test_tf_bind_missing_probability_is_invalid_instead_of_zero_filled():

@@ -209,11 +209,16 @@ Choose proteins that are structurally clean and interesting.
 
 Prefer proteins that:
 
-* are 80–350 amino acids long;
+* are 80–100 amino acids long;
 * are likely monomeric;
 * have compact, well-defined folds;
 * have little intrinsic disorder;
 * represent a variety of biological functions.
+
+The complete reference PDB task-answer JSON must remain below 60,000 characters.
+HUD stores this payload through `submit_answer` and transports only its receipt;
+the size check remains as a dataset regression guard rather than a prompt-level
+fallback to reduced coordinate-only output.
 
 Avoid:
 

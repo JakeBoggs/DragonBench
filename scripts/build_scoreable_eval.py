@@ -120,6 +120,18 @@ def build_komodo_protein_fold(start):
     rows = []
     structures = load_jsonl_required(KOMODO_ALPHAFOLD_FIXTURE, 20)
     for j, structure in enumerate(structures[:20]):
+        sequence_length = len(structure["protein_sequence"])
+        if not 80 <= sequence_length <= 100:
+            raise ValueError(
+                f"{structure['accession']} has length {sequence_length}; "
+                "KomodoProteinFold requires 80-100 aa"
+            )
+        answer_json_chars = int(structure.get("answer_json_chars", 0))
+        if not 0 < answer_json_chars < 60_000:
+            raise ValueError(
+                f"{structure['accession']} has a {answer_json_chars}-character "
+                "PDB task-answer JSON; KomodoProteinFold requires fewer than 60000"
+            )
         idx = start + j
         rows.append(common(
             idx,
@@ -143,7 +155,9 @@ def build_komodo_protein_fold(start):
                     }
                     for item in structure["coordinates"]
                 ],
-                "sequence_length": structure["sequence_length"],
+                "answer_json_chars": answer_json_chars,
+                "mean_plddt": structure["mean_plddt"],
+                "sequence_length": sequence_length,
                 "uniprot_accession": structure["accession"],
                 "protein_name": structure["protein_name"],
                 "raw_pdb_path": structure["pdb_path"],

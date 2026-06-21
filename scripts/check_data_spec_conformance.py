@@ -66,7 +66,9 @@ def main():
                 "hidden expression must cover every candidate tissue",
             )
         elif task == "KomodoProteinFold":
-            check(80 <= len(mid.get("protein_sequence", "")) <= 350, row, failures, "protein length must be 80-350 aa")
+            check(80 <= len(mid.get("protein_sequence", "")) <= 100, row, failures, "protein length must be 80-100 aa")
+            check(hidden.get("sequence_length") == len(mid.get("protein_sequence", "")), row, failures, "hidden sequence length mismatch")
+            check(0 < hidden.get("answer_json_chars", 0) < 60_000, row, failures, "reference PDB task-answer JSON must be under 60000 characters")
             check("pdb" in out or "mmcif" in out, row, failures, "output schema must request PDB/mmCIF")
             check("uniprot_accession" in hidden and "raw_pdb_path" in hidden, row, failures, "hidden source structure metadata missing")
         elif task == "DragonTFBind":

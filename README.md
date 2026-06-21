@@ -26,6 +26,7 @@ schemas/
   eval_question.schema.json
 scripts/
   build_promoter_expression_fixture.py
+  build_komodo_protein_fixture.py
   build_scoreable_eval.py
   make_smoke_answers.py
   make_demo_model_b_answers.py
@@ -69,6 +70,7 @@ It contains 100 scoreable cards:
 - 20 `RNAFold`
 
 Each scoreable card has a hidden answer with `status: verified`, so every task can be scored automatically. The hidden answers are not included in model prompts.
+Protein-folding cards use 80–100 aa sequences. Fixture generation keeps each complete reference PDB task-answer JSON below 60,000 characters, while HUD transports only the small `submit_answer` receipt.
 
 ## Model Output Contract
 
@@ -318,6 +320,7 @@ Build or refresh the scoreable eval:
 
 ```bash
 python3 scripts/build_promoter_expression_fixture.py
+python3 scripts/build_komodo_protein_fixture.py
 python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```

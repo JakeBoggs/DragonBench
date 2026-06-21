@@ -29,13 +29,17 @@ Use a bounded output cap such as `max_tokens=32768` for protein-folding runs;
 larger caps can keep the gateway call open for several minutes before HUD sees
 any assistant message.
 
-Model answers should end with a lowercase final-answer block in this shape:
+Models must first call `submit_answer` with the task JSON, then end with the
+returned receipt in this shape:
 
 ```xml
-<answer>{"field": "value"}</answer>
+<answer>{"answer_ref":"runs/hud_answers/DBEVAL-V0-001/abc123.json","sha256":"..."}</answer>
 ```
 
-The scorer accepts exact raw JSON for local tooling, but HUD prompts ask for the lowercase XML wrapper. For HUD answers, zero lowercase blocks, uppercase tags, or malformed JSON in the final block score `0`. If multiple lowercase `<answer>` blocks are present, only the last one is scored.
+Direct task JSON in the final block is invalid for HUD grading. The scorer
+accepts exact raw task JSON for local tooling, but HUD resolves the receipt to
+the stored answer artifact. Zero lowercase blocks, uppercase tags, malformed
+receipt JSON, missing artifacts, or checksum mismatches score `0`.
 
 ## Current Eval Status
 
@@ -150,16 +154,18 @@ python3 scripts/build_protein_3d_report.py \
   --out reports/protein_folding_compare.html
 ```
 
-The current bootstrap protein targets are source-extracted from RCSB PDB files into:
+The current protein targets are selected from UniProt `Varanus komodoensis`
+entries with AlphaFold DB structures. The fixture and raw structures are stored in:
 
 ```text
-data/protein_structures/ca_structures.jsonl
+data/source/komodo_alphafold/komodo_alphafold_structures.jsonl
+data/source/komodo_alphafold/pdb/
 ```
 
-Refresh the local PDB cache with:
+Refresh the short, bounded protein set with:
 
 ```bash
-python3 scripts/fetch_pdb_ca_structures.py
+python3 scripts/build_komodo_protein_fixture.py
 python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```
@@ -215,7 +221,7 @@ The environment yields a structured grade frame, not only a bare float:
   "subscores": {"base_pair_f1": 0.75},
   "info": {"matched_base_pairs": 3},
   "scoring_explanation": "Reward = 0.80 * base_pair_f1 + ...",
-  "format_contract": "Model output is parsed from the last lowercase <answer>...</answer> block..."
+  "format_contract": "HUD eval output must end with a final lowercase <answer>...</answer> block containing the submit_answer receipt JSON..."
 }
 ```
 

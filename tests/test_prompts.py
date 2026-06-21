@@ -22,6 +22,9 @@ def test_prompt_requires_submit_answer_receipt():
     assert "answer_ref" in prompt
     assert "sha256" in prompt
     assert "Direct answers inside <answer> are invalid" in prompt
+    assert '"hud_transport_constraint":' not in prompt
+    assert "under 60000 characters" not in prompt
+    assert "compact coordinate array" not in prompt
 
 
 def test_non_protein_prompt_uses_same_submission_contract():
@@ -30,3 +33,4 @@ def test_non_protein_prompt_uses_same_submission_contract():
     assert "under 60000 characters" not in prompt
     assert "calling the submit_answer tool" in prompt
     assert "answer_ref" in prompt
+    assert "compact coordinate array" not in prompt

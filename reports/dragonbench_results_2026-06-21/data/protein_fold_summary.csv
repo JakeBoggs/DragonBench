@@ -1,0 +1,8 @@
+model_key,model,stem,answer_path,protein_tasks,nonempty_answers,valid_json_answers,pdb_answers,mmcif_answers,mean,best,nonzero
+claude-opus-4-8,Opus 4.8,opus48,reports/modal_full_run/protein_folds/answers/opus48_protein_answers.jsonl,20,20,20,20,0,0.3007927683874334,0.9873188405797102,16
+gpt-5.4,GPT-5.4,gpt54,reports/modal_full_run/protein_folds/answers/gpt54_protein_answers.jsonl,20,20,20,20,0,0.26123031677081376,0.7207835325365206,20
+gpt-5.4-mini,GPT-5.4 mini,gpt54mini,reports/modal_full_run/protein_folds/answers/gpt54mini_protein_answers.jsonl,20,19,19,19,0,0.1299757894536963,0.2916666666666667,19
+gpt-5,GPT-5,gpt5,reports/modal_full_run/protein_folds/answers/gpt5_protein_answers.jsonl,20,19,19,19,0,0.11519304373329482,0.1696035242290749,19
+gpt-4o,GPT-4o,gpt4o,reports/modal_full_run/protein_folds/answers/gpt4o_protein_answers.jsonl,20,19,19,19,0,0.0860482135344948,0.36819389110225764,16
+gpt-5.5,GPT-5.5,gpt55,reports/modal_full_run/protein_folds/answers/gpt55_protein_answers.jsonl,20,20,20,10,10,0.08389771233591328,0.1696035242290749,16
+gemini-3.1-pro-preview,Gemini 3.1 Pro,gemini31pro,reports/modal_full_run/protein_folds/answers/gemini31pro_protein_answers.jsonl,20,0,0,0,0,0.0,0.0,0

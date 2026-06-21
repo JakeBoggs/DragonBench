@@ -107,7 +107,6 @@ def build_anole_promoter_expression(start):
             {
                 "primary": "spearman_rank_correlation",
                 "secondary": [
-                    "top1_tissue_accuracy",
                     "ranking_completeness",
                 ],
             },
@@ -126,7 +125,7 @@ def build_komodo_protein_fold(start):
                 f"{structure['accession']} has length {sequence_length}; "
                 "KomodoProteinFold requires 80-100 aa"
             )
-        answer_json_chars = int(structure.get("answer_json_chars", 0))
+        answer_json_chars = int(structure["answer_json_chars"])
         if not 0 < answer_json_chars < 60_000:
             raise ValueError(
                 f"{structure['accession']} has a {answer_json_chars}-character "

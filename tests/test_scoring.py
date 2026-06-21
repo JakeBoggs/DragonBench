@@ -74,6 +74,26 @@ def test_anole_gene_parse_unspliced_prediction_scores_zero():
     assert result.info["spliced_sequence_normalization_length"] == 6
 
 
+def test_anole_gene_parse_missing_sequence_is_schema_error():
+    card = {
+        "task": "AnoleGeneParse",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "introns": [{"start": 7, "end": 13}],
+                "spliced_sequence": "AAACCCCTTTTGGG",
+            },
+        },
+    }
+
+    try:
+        score_answer(card, {"introns": [{"start": 7, "end": 13}]})
+    except KeyError as exc:
+        assert exc.args[0] == "question"
+    else:
+        raise AssertionError("missing question unexpectedly produced a score result")
+
+
 def test_anole_promoter_expression_accepts_tissue_ranking():
     card = {
         "task": "AnolePromoterExpression",
@@ -151,7 +171,7 @@ def test_promoter_expression_reverse_ranking_scores_zero():
     assert result.reward == 0.0
 
 
-def test_protein_folding_scores_coordinates():
+def test_protein_folding_rejects_coordinate_array_answer():
     card = {
         "task": "KomodoProteinFold",
         "hidden_answer": {
@@ -172,8 +192,8 @@ def test_protein_folding_scores_coordinates():
             {"residue_index": 2, "x": 1, "y": 1, "z": 0},
         ]
     })
-    assert result.status == "scored"
-    assert result.reward == 1.0
+    assert result.status == "invalid_answer"
+    assert result.reward == 0.0
 
 
 def test_komodo_protein_fold_scores_pdb_string():
@@ -266,7 +286,41 @@ def test_tf_bind_scores_binding_probabilities():
     assert result.subscores["auroc"] == 1.0
 
 
+def test_tf_bind_missing_probability_is_invalid_instead_of_zero_filled():
+    card = {
+        "task": "DragonTFBind",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "binding_probabilities": {
+                    "seq_01": 0.95,
+                    "seq_02": 0.05,
+                }
+            },
+        },
+    }
+    result = score_answer(card, {"binding_probabilities": {"seq_01": 0.9}})
+    assert result.status == "invalid_answer"
+    assert result.reward == 0.0
+
+
 def test_rnafold_task_name_scores_dot_bracket():
+    card = {
+        "task": "RNAFold",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "dot_bracket": "(((...)))",
+                "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}],
+            },
+        },
+    }
+    result = score_answer(card, {"dot_bracket": "(((...)))"})
+    assert result.status == "scored"
+    assert result.reward == 1.0
+
+
+def test_rnafold_hidden_base_pairs_are_required():
     card = {
         "task": "RNAFold",
         "hidden_answer": {
@@ -275,8 +329,24 @@ def test_rnafold_task_name_scores_dot_bracket():
         },
     }
     result = score_answer(card, {"dot_bracket": "(((...)))"})
-    assert result.status == "scored"
-    assert result.reward == 1.0
+    assert result.status == "unscored_invalid_hidden_answer"
+    assert result.reward == 0.0
+
+
+def test_rnafold_length_mismatch_is_invalid_instead_of_partial_credit():
+    card = {
+        "task": "RNAFold",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "dot_bracket": "(((...)))",
+                "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}],
+            },
+        },
+    }
+    result = score_answer(card, {"dot_bracket": "(((...))))"})
+    assert result.status == "invalid_answer"
+    assert result.reward == 0.0
 
 
 def test_parser_accepts_raw_json_string():

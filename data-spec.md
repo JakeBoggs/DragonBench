@@ -178,8 +178,6 @@ reward = max(0, Spearman rank correlation)
 ```
 
 Negative correlations are clipped to zero, so inverse rankings score zero.
-Top-tissue accuracy and NDCG are reported as diagnostics but do not affect
-the reward.
 
 ---
 
@@ -219,7 +217,7 @@ Prefer proteins that:
 
 The complete reference PDB task-answer JSON must remain below 60,000 characters.
 The size check ensures the complete all-atom structure fits directly in the
-model response and HUD transport without a reduced coordinate-only fallback.
+model response and HUD transport.
 
 Avoid:
 

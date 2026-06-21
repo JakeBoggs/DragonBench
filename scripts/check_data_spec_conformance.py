@@ -26,7 +26,7 @@ def main():
 
     rows = load_jsonl(args.dataset)
     failures = []
-    counts = Counter(row.get("task") for row in rows)
+    counts = Counter(row["task"] for row in rows)
     if counts != EXPECTED_COUNTS:
         failures.append(f"task counts differ: {dict(counts)}")
 
@@ -45,39 +45,40 @@ def main():
             check(1 <= len(hidden["introns"]) <= 5, row, failures, "must have 1-5 introns")
             check("introns" in out, row, failures, "output schema must request introns")
         elif task == "AnolePromoterExpression":
-            check(len(mid.get("promoter_sequence", "")) == 2000, row, failures, "promoter must be 2000 bp")
+            check(len(mid["promoter_sequence"]) == 2000, row, failures, "promoter must be 2000 bp")
             check(
-                "candidate_tissues" in mid and len(mid["candidate_tissues"]) == 9,
+                len(mid["candidate_tissues"]) == 9,
                 row,
                 failures,
                 "must provide exactly nine candidate tissues",
             )
             check("tissue_ranking" in out, row, failures, "output schema must request tissue_ranking")
             check(
-                set(hidden.get("tissue_ranking", [])) == set(mid.get("candidate_tissues", [])),
+                sorted(hidden["tissue_ranking"]) == sorted(mid["candidate_tissues"])
+                and len(hidden["tissue_ranking"]) == len(mid["candidate_tissues"]),
                 row,
                 failures,
                 "hidden tissue_ranking must be a permutation of candidate_tissues",
             )
             check(
-                set(hidden.get("expression", {})) == set(mid.get("candidate_tissues", [])),
+                sorted(hidden["expression"]) == sorted(mid["candidate_tissues"]),
                 row,
                 failures,
                 "hidden expression must cover every candidate tissue",
             )
         elif task == "KomodoProteinFold":
-            check(80 <= len(mid.get("protein_sequence", "")) <= 100, row, failures, "protein length must be 80-100 aa")
-            check(hidden.get("sequence_length") == len(mid.get("protein_sequence", "")), row, failures, "hidden sequence length mismatch")
-            check(0 < hidden.get("answer_json_chars", 0) < 60_000, row, failures, "reference PDB task-answer JSON must be under 60000 characters")
+            check(80 <= len(mid["protein_sequence"]) <= 100, row, failures, "protein length must be 80-100 aa")
+            check(hidden["sequence_length"] == len(mid["protein_sequence"]), row, failures, "hidden sequence length mismatch")
+            check(0 < hidden["answer_json_chars"] < 60_000, row, failures, "reference PDB task-answer JSON must be under 60000 characters")
             check("pdb" in out or "mmcif" in out, row, failures, "output schema must request PDB/mmCIF")
             check("uniprot_accession" in hidden and "raw_pdb_path" in hidden, row, failures, "hidden source structure metadata missing")
         elif task == "DragonTFBind":
             check("tf_sequence" in mid, row, failures, "tf_sequence missing")
-            check(len(mid.get("dna_candidates", [])) == 10, row, failures, "must provide exactly 10 DNA candidates")
+            check(len(mid["dna_candidates"]) == 10, row, failures, "must provide exactly 10 DNA candidates")
             check("binding_probabilities" in out, row, failures, "output schema must request binding_probabilities")
         elif task == "RNAFold":
-            check(50 <= len(mid.get("sequence", "")) <= 250, row, failures, "RNA length must be 50-250 nt")
-            check(set(mid.get("sequence", "")) <= set("ACGU"), row, failures, "RNA sequence must contain only A/C/G/U")
+            check(50 <= len(mid["sequence"]) <= 250, row, failures, "RNA length must be 50-250 nt")
+            check(set(mid["sequence"]) <= set("ACGU"), row, failures, "RNA sequence must contain only A/C/G/U")
             check("dot_bracket" in out, row, failures, "output schema must request dot_bracket")
 
     if failures:

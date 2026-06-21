@@ -108,10 +108,10 @@ def test_rna_fold_has_custom_prompt():
     assert_no_benchmark_internals(prompt)
 
 
-def test_unknown_task_has_no_generic_fallback():
+def test_unknown_task_raises_instead_of_using_generic_prompt():
     try:
         render_prompt(card("UnknownTask", {}))
     except ValueError as exc:
         assert "unsupported task prompt" in str(exc)
     else:
-        raise AssertionError("unknown task unexpectedly used a prompt fallback")
+        raise AssertionError("unknown task unexpectedly used a generic prompt")

@@ -1,0 +1,281 @@
+DragonBench Visual Prompt Pack
+
+Global style brief
+
+We are creating a fantasy-science pitch deck for a project called DragonBench, a benchmark for measuring AI models on genetic engineering tasks relevant to a future where dragons could exist.
+
+The deck should feel ambitious, whimsical, premium, and scientific. Visual style: light-colored fantasy illustration, not dark fantasy. Use a pale cream or parchment background, soft sky-blue, sage green, navy typography, and warm gold accents. The aesthetic should blend illuminated manuscript, watercolor fantasy, modern startup pitch deck, and elegant biotech infographic.
+
+Design motifs:
+
+Pale dragons, dragon eggs, wings, scales, stars, celestial symbols.
+
+DNA helices, protein folds, genome diagrams, RNA loops, lab glassware.
+
+Thin gold borders, art-nouveau corner ornaments, subtle vines/leaves.
+
+Clean slide layout with strong hierarchy and lots of whitespace.
+
+Typography should feel refined and legible: large elegant serif titles in deep navy, smaller explanatory text in sage green or muted gray.
+
+Use light, airy, optimistic illustrations. Avoid dark backgrounds, horror, aggression, cyberpunk, or clutter.
+
+The slides should look consistent as one deck.
+
+Important text-rendering instruction:Keep text sparse and large. Do not overfill slides with small labels. Any charts or tables should be clean, approximate, and visually polished. Exact numbers can be placeholders.
+
+Deck narrative:
+
+DragonBench title.
+
+Our vision for 2040.
+
+How do we get there?
+
+The bottleneck: biological design reasoning / DragonBench benchmark.
+
+Benchmark results.
+
+Specialized models vs general models.
+
+What the results tell us.
+
+When dragons?
+
+Slide 1 prompt: Title
+
+Create a polished 16:9 presentation slide mockup with a light-colored fantasy-meets-science aesthetic. This is Slide 1 of a deck.
+
+The slide should look like a modern startup presentation, clean and highly legible, but with whimsical dragon-themed illustration. Use a pale cream or parchment background with soft sky-blue, gold, and sage accents. Include subtle decorative fantasy motifs like delicate scales, stars, vines, and illuminated-manuscript borders, but keep it elegant and minimal.
+
+Main title centered prominently:
+
+“DragonBench”
+
+Subtitle beneath it:
+
+“Measuring AI on genetic engineering tasks”
+
+Include a light, beautiful illustration of a dragon intertwined with a DNA helix, airy and refined, not dark or aggressive. The overall tone should be ambitious, imaginative, premium, and visually cohesive for a hackathon pitch deck. Ensure the text is clear and rendered correctly.
+
+Slide 2 prompt: Our vision for 2040
+
+Create Slide 2 of the same presentation deck. Match the light fantasy-science aesthetic: pale parchment background, soft blue/gold/sage palette, elegant illuminated-manuscript details, refined typography, and clean startup pitch structure.
+
+The slide title should read:
+
+“Our vision for 2040”
+
+Build a compelling aspirational future scene where AI designs novel organisms. Show an airy central illustration of a majestic pale dragon flying above a luminous futuristic bio-lab landscape. Include floating holographic DNA, embryos or organisms in glass vessels, protein structures, and biological design interfaces.
+
+Add three short callout phrases in a clean left-side layout:
+
+“Specify phenotype”“Design genome”“Build new life”
+
+The tone should be optimistic, imaginative, premium, and light-colored. Use lots of whitespace. Make it feel like a utopian fantasy-biotech city, not a dark laboratory.
+
+Slide 3 prompt: How do we get there?
+
+Create Slide 3 of the same presentation deck. Match the light fantasy-science aesthetic: parchment background, watercolor biotech/fantasy illustration, navy serif title, sage/gold accents, delicate manuscript border.
+
+The slide title should read:
+
+“How do we get there?”
+
+Design this as a strategic roadmap slide. Include a large elegant chart on the left or center showing synthesis progress over time, with a rising trend line and milestones. The chart should be visually polished and legible, not overly dense.
+
+Suggested chart title:
+
+“Synthesis progress roadmap”
+
+Suggested message under title:
+
+“Synthesis is advancing rapidly. Design intelligence is the bottleneck.”
+
+On the right, show the main enabling technologies as illustrated pillars or stacked cards with small icons and short labels:
+
+“DNA synthesis”“Genome editing”“Protein prediction”“Regulatory design”“General AI design agents”
+
+Make it clear through composition that synthesis is advancing quickly, but design intelligence is the bottleneck. Include a subtle dragon egg motif in the lower corner and a pale dragon/DNA motif in the upper corner. Use light colors and clean chart styling.
+
+Slide 4 prompt: DragonBench benchmark overview
+
+Create Slide 4 of the same presentation deck. Match the same light fantasy-science style with parchment background, gold border, navy serif title, sage subtitles, soft watercolor biological illustrations, and refined startup pitch layout.
+
+The slide title should read:
+
+“DragonBench”
+
+Subtitle:
+
+“A benchmark for biological design reasoning”
+
+This is the condensed benchmark overview slide. Show a clean central panel summarizing the benchmark as:
+
+“100 tasks across 5 environments”
+
+Include five beautifully illustrated cards or columns with concise labels and tiny diagrams:
+
+“Anole gene parsing”
+
+“Anole promoter expression”
+
+“Komodo protein folding”
+
+“TF binding”
+
+“RNA folding”
+
+For each card, show:
+
+A small organism or biological motif illustration.
+
+A tiny input-output visual.
+
+A small metric tag.
+
+Suggested metric tags:
+
+Gene parsing: “Metric: spliced-sequence distance”
+
+Promoter expression: “Metric: rank correlation”
+
+Protein folding: “Metric: TM-score / lDDT”
+
+TF binding: “Metric: AUROC”
+
+RNA folding: “Metric: base-pair F1”
+
+Keep it legible, polished, and visually rich, but not text-heavy. Add a small decorative dragon manuscript border and soft biological illustrations.
+
+Slide 5 prompt: Benchmark results
+
+Create Slide 5 of the same presentation deck. Match the light fantasy-science aesthetic: parchment background, gold ornamentation, soft watercolor dragon/science motifs, navy title, sage text, clean charts.
+
+The slide title should read:
+
+“Benchmark results”
+
+Design a clean data slide with elegant charts. Include a main grouped bar chart comparing different model classes across the five DragonBench categories and an overall score.
+
+Use readable placeholder model labels:
+
+“General LLM A”“General LLM B”“Open LLM”“Specialized baseline”“Bio baseline”
+
+Use task labels:
+
+“Gene parsing”“Promoter expression”“Protein folding”“TF binding”“RNA folding”“Overall”
+
+Also include a smaller summary badge or panel labeled:
+
+“DragonBench Score”
+
+The visual message should be:
+
+“Models vary substantially across genetic engineering tasks — no general model is yet uniformly strong.”
+
+Preserve the light fantasy-science aesthetic, with subtle dragon-scale accents, gold dividers, and soft illustrations in the margins. Make the chart look polished and startup-deck-ready.
+
+Slide 6 prompt: Specialized models vs general models
+
+Create Slide 6 of the same presentation deck. Match the light fantasy-science style: parchment background, elegant borders, watercolor protein folds, subtle dragon motifs, navy title, gold dividers.
+
+The slide title should read:
+
+“Specialized models vs general models”
+
+Subtitle:
+
+“AlphaFold is excellent today. General models are starting to catch up.”
+
+Build a side-by-side comparison slide.
+
+Left side:
+
+Label: “AlphaFold”
+
+Show a beautiful folded protein ribbon structure.
+
+Include a clean metric card with strong placeholder numbers:
+
+“TM-score 0.92”
+
+“lDDT 0.94”
+
+Small caption: “Excellent accuracy”
+
+Right side:
+
+Label: “General LLM”
+
+Show another folded protein or structure output, somewhat less refined.
+
+Include a clean metric card with lower placeholder numbers:
+
+“TM-score 0.48”
+
+“lDDT 0.55”
+
+Small caption: “Room for improvement”
+
+At the bottom, include a takeaway ribbon:
+
+“Specialized systems dominate narrow tasks, but general models are improving fast.”
+
+Make the slide feel like a premium scientific presentation with fantasy accents, light colors, and subtle dragon energy rather than dark biotech.
+
+Slide 7 prompt: What the results tell us
+
+Create Slide 7 of the same presentation deck. Match the light fantasy-science aesthetic: parchment background, ornate gold border, pale dragon illustration in the corner, refined analytical layout, navy and sage typography.
+
+The slide title should read:
+
+“What the results tell us”
+
+Subtitle:
+
+“General models excel at ranking and sequence tasks, but struggle on structure — and still lag behind expert biological systems.”
+
+Design this as an analysis slide with four insight cards. Each card should have a small supporting mini-chart or icon.
+
+Insight cards:
+
+“Sequence reasoning is improving”Supporting visual: small DNA icon and mini bar chart.
+
+“Structure remains hard”Supporting visual: geometric protein/fold icon and mini bar chart.
+
+“Specialized models still lead”Supporting visual: trophy or laurel icon and mini comparison chart.
+
+“There’s a meaningful gap to experts”Supporting visual: target icon and small gap chart.
+
+The overall message should be that general models perform better on ranking and sequence-based tasks than on geometry-heavy structure prediction, and there is still a meaningful gap to expert biological systems.
+
+Use lots of whitespace. Keep it clean, analytical, and beautiful. Add refined fantasy-science illustrations in the corners, such as a pale dragon, telescope, books, flask, compass, DNA emblem, or vines.
+
+Slide 8 prompt: When dragons?
+
+Create Slide 8 of the same presentation deck. Match the light fantasy-science style: pale parchment, navy title, sage subtitle, gold ornamentation, soft watercolor illustration, refined chart design.
+
+The slide title should read:
+
+“When dragons?”
+
+Subtitle:
+
+“Projecting the path to biological design capability”
+
+This is the closing projection slide. Include a beautiful line chart showing “DragonBench capability” over time from earlier models to future models, with an extrapolated curve reaching a highlighted threshold labeled:
+
+“Dragon design threshold”
+
+Place the threshold near the year 2040. Include soft uncertainty bands around the projection.
+
+The x-axis should be “Year.”The y-axis should be “DragonBench capability” or “Biological design capability.”
+
+Include a striking but light fantasy illustration: a dragon egg hatching or a young pale dragon emerging from an egg, integrated subtly with the chart.
+
+Include one bold concluding statement at the bottom:
+
+“If design capability compounds like coding and reasoning, dragon-level bio design becomes thinkable within decades.”
+
+Keep the slide premium, inspiring, and clean. Make the projection feel ambitious and mythic, while still looking like a serious technical pitch deck.

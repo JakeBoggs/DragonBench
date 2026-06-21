@@ -103,8 +103,10 @@ def load_expression() -> dict[str, dict[str, float]]:
 
     expression = {}
     for gene_id, values in per_gene.items():
+        if set(values) != set(TISSUES):
+            continue
         expression[gene_id] = {
-            tissue: statistics.mean(values.get(tissue, [0.0]))
+            tissue: statistics.mean(values[tissue])
             for tissue in TISSUES
         }
     return expression
@@ -176,8 +178,8 @@ def lookup_genes(gene_ids: list[str]) -> dict[str, dict]:
 
 def canonical_cds_start(gene_id: str) -> tuple[dict, dict, int] | None:
     gene = request_json(f"{ENSEMBL_REST}/lookup/id/{gene_id}?expand=1")
-    canonical_id = str(gene.get("canonical_transcript", "")).split(".", 1)[0]
-    transcripts = gene.get("Transcript", [])
+    canonical_id = str(gene["canonical_transcript"]).split(".", 1)[0]
+    transcripts = gene["Transcript"]
     canonical = next(
         (
             transcript
@@ -208,7 +210,7 @@ def promoter_sequence(gene: dict, cds_start: int) -> tuple[str, int, int] | None
     payload = request_json(
         f"{ENSEMBL_REST}/sequence/region/anolis_carolinensis/{encoded_region}"
     )
-    sequence = str(payload.get("seq", "")).upper()
+    sequence = str(payload["seq"]).upper()
     if len(sequence) != 2000 or set(sequence) - set("ACGT"):
         return None
     return sequence, start, end
@@ -262,7 +264,7 @@ def build_records() -> list[dict]:
                 "expression_source_url": BGEE_DATA_URL,
                 "expression_unit": "TPM",
                 "gene_id": candidate["gene_id"],
-                "gene_name": gene.get("display_name") or candidate["gene_id"],
+                "gene_name": gene["display_name"],
                 "promoter_end": promoter_end,
                 "promoter_sequence": sequence,
                 "promoter_start": promoter_start,

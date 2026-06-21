@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dragonbench.io import load_jsonl
-from dragonbench.scoring import parse_model_json, predicted_protein_coordinates, score_answer
+from dragonbench.scoring import parse_model_json, predicted_protein_coordinates, reference_protein_coordinates, score_answer
 
 
 HTML_TEMPLATE = """<!doctype html>
@@ -181,7 +181,7 @@ HTML_TEMPLATE = """<!doctype html>
         <span id="legendError"><span class="swatch" style="background:var(--error)"></span>Residue error links</span>
       </div>
       <div class="note" id="modeNote">
-        This uses 3Dmol.js. Drag to rotate, scroll to zoom, right-drag to pan. Full PDB/mmCIF answers render as protein cartoons; coordinate-only answers fall back to C-alpha traces.
+        This uses 3Dmol.js. Drag to rotate, scroll to zoom, right-drag to pan. Submitted PDB/mmCIF structures render as protein cartoons when possible; parsed C-alpha coordinates drive geometry overlays.
       </div>
     </section>
     <section class="viewer-grid">
@@ -597,15 +597,22 @@ HTML_TEMPLATE = """<!doctype html>
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a 3Dmol protein folding report from DragonBench answer JSONL.")
     parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
-    parser.add_argument("--answers", default=None, help="Single-model answer JSONL. Alias for --answers-a.")
-    parser.add_argument("--answers-a", default=None, help="Model A answer JSONL.")
+    parser.add_argument("--answers", help="Single-model answer JSONL. Alias for --answers-a.")
+    parser.add_argument("--answers-a", help="Model A answer JSONL.")
     parser.add_argument("--answers-b", default=None, help="Optional Model B answer JSONL for comparison mode.")
     parser.add_argument("--model-a-name", default="Model A")
     parser.add_argument("--model-b-name", default="Model B")
     parser.add_argument("--out", default="reports/protein_folding_3d.html")
     args = parser.parse_args()
 
-    answers_a_path = args.answers_a or args.answers or "eval/smoke_answers.jsonl"
+    if args.answers_a and args.answers:
+        parser.error("use either --answers-a or --answers, not both")
+    if args.answers_a:
+        answers_a_path = args.answers_a
+    elif args.answers:
+        answers_a_path = args.answers
+    else:
+        parser.error("one of --answers-a or --answers is required")
     cards = {row["id"]: row for row in load_jsonl(args.dataset)}
     answer_rows_a = {row["id"]: row for row in load_jsonl(answers_a_path)}
     answer_rows_b = {row["id"]: row for row in load_jsonl(args.answers_b)} if args.answers_b else None
@@ -627,8 +634,8 @@ def build_report_payload(cards, answer_rows_a, answer_rows_b=None, model_a_name=
         if card["task"] not in {"KomodoProteinFold", "DragonProteinFolding"}:
             continue
         hidden = card["hidden_answer"]["answer"]
-        target_structure = extract_structure_payload(hidden)
-        target_coord_map, _ = predicted_protein_coordinates(hidden)
+        target_structure = extract_reference_structure_payload(hidden)
+        target_coord_map, _ = reference_protein_coordinates(hidden)
         target_coords = coordinates_to_rows(target_coord_map)
         task = {
             "id": card["id"],
@@ -638,9 +645,9 @@ def build_report_payload(cards, answer_rows_a, answer_rows_b=None, model_a_name=
             "target_coordinates": target_coords,
             "target_structure": target_structure,
         }
-        model_a = build_model_payload(card, answer_rows_a.get(card["id"], {}).get("answer", "{}"), target_coord_map)
+        model_a = build_model_payload(card, answer_for_task(answer_rows_a, card["id"], "model A"), target_coord_map)
         if answer_rows_b is not None:
-            model_b = build_model_payload(card, answer_rows_b.get(card["id"], {}).get("answer", "{}"), target_coord_map)
+            model_b = build_model_payload(card, answer_for_task(answer_rows_b, card["id"], "model B"), target_coord_map)
             task["model_a"] = model_a
             task["model_b"] = model_b
         else:
@@ -665,6 +672,15 @@ def build_report_payload(cards, answer_rows_a, answer_rows_b=None, model_a_name=
     }
 
 
+def answer_for_task(answer_rows, task_id, label):
+    if task_id not in answer_rows:
+        raise KeyError(f"missing {label} answer for {task_id}")
+    row = answer_rows[task_id]
+    if not isinstance(row, dict) or "answer" not in row:
+        raise KeyError(f"{label} answer row for {task_id} must contain answer")
+    return row["answer"]
+
+
 def write_report(out_path, payload):
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -682,11 +698,15 @@ def build_single_task_report(card, answer, out_path, model_name="HUD Model"):
 
 
 def build_model_payload(card, answer_text, target_coord_map):
-    parsed, _ = parse_model_json(answer_text)
-    parsed = parsed or {}
+    parsed, parse_error = parse_model_json(answer_text)
     result = score_answer(card, answer_text)
-    coord_map, _ = predicted_protein_coordinates(parsed)
-    structure = extract_structure_payload(parsed)
+    coord_map = {}
+    structure = None
+    if parse_error is None and parsed is not None:
+        coord_map, _, coordinate_error = predicted_protein_coordinates(parsed)
+        if coordinate_error:
+            coord_map = {}
+        structure = extract_model_structure_payload(parsed)
     aligned_structure = align_structure_payload(structure, coord_map, target_coord_map)
     aligned_coord_map = align_coordinate_map(coord_map, target_coord_map)
     return {
@@ -725,20 +745,24 @@ def align_coordinate_map(moving_coords, target_coords):
     }
 
 
-def extract_structure_payload(record):
+def extract_model_structure_payload(record):
     if not isinstance(record, dict):
         return None
     if isinstance(record.get("pdb"), str) and record["pdb"].strip():
         return structure_payload(record["pdb"], "pdb")
     if isinstance(record.get("mmcif"), str) and record["mmcif"].strip():
         return structure_payload(record["mmcif"], "mmcif")
-    if isinstance(record.get("cif"), str) and record["cif"].strip():
-        return structure_payload(record["cif"], "mmcif")
-    structure = record.get("structure")
-    if isinstance(structure, str) and structure.strip():
-        fmt = "mmcif" if "_atom_site." in structure else "pdb"
-        return structure_payload(structure, fmt)
-    raw_path = record.get("raw_pdb_path") or record.get("pdb_path")
+    return None
+
+
+def extract_reference_structure_payload(record):
+    if not isinstance(record, dict):
+        return None
+    if isinstance(record.get("pdb"), str) and record["pdb"].strip():
+        return structure_payload(record["pdb"], "pdb")
+    if isinstance(record.get("mmcif"), str) and record["mmcif"].strip():
+        return structure_payload(record["mmcif"], "mmcif")
+    raw_path = record.get("raw_pdb_path")
     if isinstance(raw_path, str) and raw_path:
         path = Path(raw_path)
         if path.exists():
@@ -859,12 +883,14 @@ def align_structure_payload(structure, moving_coords, target_coords):
 
 def protein_explanation(result):
     s = result.subscores
+    if result.status != "scored":
+        return f"status={result.status}; reward={result.reward:.3f}; info={json.dumps(result.info, sort_keys=True)}"
     return (
         f"reward=coverage * local_structure_score; "
-        f"coverage={s.get('coordinate_coverage', 0):.3f}, "
-        f"local_structure={s.get('local_structure_score', 0):.3f}, "
-        f"dRMSD score={s.get('distance_matrix_rmsd_score', 0):.3f}, "
-        f"dRMSD={s.get('drmsd_angstrom', 0):.3f}"
+        f"coverage={s['coordinate_coverage']:.3f}, "
+        f"local_structure={s['local_structure_score']:.3f}, "
+        f"dRMSD score={s['distance_matrix_rmsd_score']:.3f}, "
+        f"dRMSD={s['drmsd_angstrom']:.3f}"
     )
 
 

@@ -33,15 +33,18 @@ def fetch_json(url):
 
 
 def protein_name(entry):
-    description = entry.get("proteinDescription", {})
-    recommended = description.get("recommendedName", {})
-    full_name = recommended.get("fullName", {})
-    if full_name.get("value"):
-        return full_name["value"]
-    submissions = description.get("submissionNames", [])
-    if submissions:
-        return submissions[0].get("fullName", {}).get("value", "Uncharacterized protein")
-    return "Uncharacterized protein"
+    description = entry["proteinDescription"]
+    recommended = description.get("recommendedName")
+    if isinstance(recommended, dict):
+        full_name = recommended.get("fullName")
+        if isinstance(full_name, dict) and full_name.get("value"):
+            return full_name["value"]
+    submissions = description.get("submissionNames")
+    if isinstance(submissions, list) and submissions:
+        full_name = submissions[0].get("fullName")
+        if isinstance(full_name, dict) and full_name.get("value"):
+            return full_name["value"]
+    raise ValueError(f"{entry['primaryAccession']} has no protein name")
 
 
 def parse_ca_coordinates(pdb_text):
@@ -97,7 +100,7 @@ def build_candidate(entry):
             "protein_sequence": sequence,
             "sequence_length": len(sequence),
             "source_url": pdb_url,
-            "uniprot_id": entry.get("uniProtkbId", accession),
+            "uniprot_id": entry["uniProtkbId"],
             "uniprot_url": f"https://rest.uniprot.org/uniprotkb/{accession}.json",
         },
         "pdb_name": pdb_name,
@@ -118,12 +121,7 @@ def fetch_candidates():
     with ThreadPoolExecutor(max_workers=WORKERS) as executor:
         futures = {executor.submit(build_candidate, entry): entry for entry in entries}
         for future in as_completed(futures):
-            try:
-                candidate = future.result()
-            except Exception as exc:
-                accession = futures[future]["primaryAccession"]
-                print(f"Skipping {accession}: {exc}")
-                continue
+            candidate = future.result()
             if candidate is not None:
                 candidates.append(candidate)
     candidates.sort(

@@ -99,10 +99,10 @@ dragonbench/scoring.py
 Current scoring functions:
 
 - Gene parsing: `max(0, 1 - Levenshtein(predicted spliced, true spliced) / (original length - true spliced length))`. Intron interval F1, boundary score, and count accuracy are diagnostics.
-- Promoter expression: chance-clipped Spearman rank correlation across nine tissues. Incomplete or duplicate rankings score zero; top-1 accuracy and NDCG are diagnostics.
+- Promoter expression: chance-clipped Spearman rank correlation across nine tissues. Incomplete or duplicate rankings score zero.
 - Protein folding: coordinate coverage multiplied by local C-alpha distance-matrix similarity, with all-atom PDB/mmCIF validity and backbone completeness folded into the local structure score. Low residue coverage caps the reward.
 - TF binding: AUROC, AUPRC, ranking accuracy, and Brier score for probability tasks; interval F1 for interval tasks.
-- RNA folding: base-pair F1, exact dot-bracket match, and length validity.
+- RNA folding: base-pair F1. The dot-bracket string must be balanced and match the RNA length.
 
 Score logs are written by default to:
 
@@ -209,7 +209,7 @@ The viewer supports:
 
 - all-atom PDB answers via `{"pdb": "ATOM ..."}`;
 - mmCIF answers via `{"mmcif": "data_model..."}`;
-- coordinate-array fallback for older C-alpha answers;
+- all-atom structure rendering from canonical PDB/mmCIF answers;
 - automatic C-alpha trace rendering for incomplete-backbone PDB/mmCIF answers, so sparse or CA-only outputs remain visible instead of disappearing in cartoon mode;
 - task deep links through `?task_id=DBEVAL-V0-041`;
 - an offset overlay toggle so nearly identical structures are still readable.
@@ -284,13 +284,9 @@ Important:
 - The public URL must serve both `reports/` and `vendor/`, because the HTML loads `/vendor/3Dmol-min.js`.
 - The generated report deep-links to the task id using `?task_id=...`.
 
-Optional override for the report path:
+Normal HUD protein runs generate and link to `reports/hud/<task-id>-<answer-hash>.html`.
 
-```bash
-DRAGONBENCH_PROTEIN_VIZ_REPORT=reports/protein_folding_3d.html
-```
-
-This override is only a fallback. Normal HUD protein runs generate and link to `reports/hud/<task-id>-<answer-hash>.html`.
+If trace-specific report generation fails, the harness surfaces the exception instead of linking a stale report.
 
 Example hosted run:
 

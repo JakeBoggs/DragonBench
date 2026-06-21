@@ -46,16 +46,13 @@ def make_visualization_info(card, answer=None):
             "visualization_status": "disabled",
             "visualization_reason": "Set DRAGONBENCH_VIZ_BASE_URL to emit a protein viewer link.",
         }
-    try:
-        report_path = make_trace_report(card, answer) if answer is not None else None
-        source = "hud_model_answer"
-    except Exception as exc:
-        report_path = None
-        source = "static_fallback"
-        report_error = str(exc)
-    if report_path is None:
-        report_path = os.environ.get("DRAGONBENCH_PROTEIN_VIZ_REPORT", "reports/protein_folding_3d.html").strip()
-        report_path = report_path or "reports/protein_folding_3d.html"
+    if answer is None:
+        return {
+            "visualization_status": "disabled",
+            "visualization_reason": "No protein answer was available for trace-specific report generation.",
+        }
+    report_path = make_trace_report(card, answer)
+    source = "hud_model_answer"
     report_path_str = str(report_path)
     url = f"{base_url.rstrip('/')}/{report_path_str.lstrip('/')}?task_id={quote(card['id'], safe='')}"
     is_local = base_url.startswith(("http://127.0.0.1", "http://localhost", "http://0.0.0.0"))
@@ -78,9 +75,6 @@ def make_visualization_info(card, answer=None):
             ),
         }
     }
-    if source == "static_fallback":
-        info["visualization_error"] = report_error
-        info["visualization"]["note"] += " Trace-specific report generation failed; this link uses the configured single-answer fallback report."
     return info
 
 

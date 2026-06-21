@@ -28,7 +28,7 @@ def parse_model_json(answer: Any) -> tuple[dict[str, Any] | None, str | None]:
 
 
 def score_answer(card: dict[str, Any], answer: Any) -> ScoreResult:
-    hidden = card.get("hidden_answer", {})
+    hidden = card["hidden_answer"]
     if hidden.get("status") not in {"extracted", "verified"} or hidden.get("answer") is None:
         return ScoreResult(
             reward=0.0,
@@ -44,43 +44,68 @@ def score_answer(card: dict[str, Any], answer: Any) -> ScoreResult:
     task = card.get("task")
     expected = hidden["answer"]
     if task == "AnoleGeneParse":
-        model_input = card.get("question", {}).get("model_input", {})
-        sequence = model_input.get("sequence")
-        return score_gene_parse_introns(parsed or {}, expected, sequence)
+        sequence = card["question"]["model_input"]["sequence"]
+        return score_gene_parse_introns(parsed, expected, sequence)
     if task == "AnolePromoterExpression":
-        return score_promoter_expression_ranking(parsed or {}, expected)
+        return score_promoter_expression_ranking(parsed, expected)
     if task == "KomodoProteinFold":
-        return score_protein_folding(parsed or {}, expected)
+        return score_protein_folding(parsed, expected)
     if task == "DragonTFBind":
-        return score_tf_bind(parsed or {}, expected)
+        return score_tf_bind(parsed, expected)
     if task == "RNAFold":
-        return score_rna_folding(parsed or {}, expected)
+        return score_rna_folding(parsed, expected)
     return ScoreResult(0.0, "unknown_task", {}, {"task": task})
 
 
+def invalid_answer(reason: str, subscores: dict[str, float] | None = None, **info: Any) -> ScoreResult:
+    return ScoreResult(0.0, "invalid_answer", {} if subscores is None else subscores, {"reason": reason, **info})
+
+
+def invalid_hidden_answer(reason: str, **info: Any) -> ScoreResult:
+    return ScoreResult(0.0, "unscored_invalid_hidden_answer", {}, {"reason": reason, **info})
+
+
 def score_tf_bind(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
-    true_probs = expected.get("binding_probabilities", {})
-    pred_probs = pred.get("binding_probabilities", {})
-    if not isinstance(true_probs, dict):
-        return ScoreResult(0.0, "unscored_missing_true_probabilities", {}, {})
-    if not isinstance(pred_probs, dict):
-        pred_probs = {}
+    true_probs = expected.get("binding_probabilities")
+    if not isinstance(true_probs, dict) or not true_probs:
+        return invalid_hidden_answer("hidden answer must contain binding_probabilities")
 
     ids = list(true_probs.keys())
-    valid_ids = [seq_id for seq_id in ids if is_number(true_probs[seq_id])]
-    true_values = [clamp01(float(true_probs[seq_id])) for seq_id in valid_ids]
+    true_values = []
+    for seq_id in ids:
+        value = true_probs[seq_id]
+        if not is_probability(value):
+            return invalid_hidden_answer("hidden binding probability must be a number from 0 through 1", sequence_id=seq_id)
+        true_values.append(float(value))
     y_true = [1 if value >= 0.5 else 0 for value in true_values]
-    y_score = [
-        clamp01(float(pred_probs.get(seq_id, 0.0))) if is_number(pred_probs.get(seq_id, 0.0)) else 0.0
-        for seq_id in valid_ids
-    ]
-    if not valid_ids:
-        return ScoreResult(0.0, "unscored_missing_true_probabilities", {}, {})
+    if sum(y_true) == 0 or sum(y_true) == len(y_true):
+        return invalid_hidden_answer("TF binding hidden labels must include both positive and negative examples")
+    if len(set(true_values)) < 2:
+        return invalid_hidden_answer("TF binding hidden probabilities must not all be identical")
+
+    pred_probs = pred.get("binding_probabilities")
+    if not isinstance(pred_probs, dict):
+        return invalid_answer("answer must contain a binding_probabilities object")
+    if set(pred_probs.keys()) != set(ids):
+        return invalid_answer(
+            "binding_probabilities must contain exactly the supplied candidate IDs",
+            missing_ids=sorted(set(ids) - set(pred_probs.keys())),
+            extra_ids=sorted(set(pred_probs.keys()) - set(ids)),
+            n_pred=len(pred_probs),
+            n_true=len(ids),
+        )
+
+    y_score = []
+    for seq_id in ids:
+        value = pred_probs[seq_id]
+        if not is_probability(value):
+            return invalid_answer("each binding probability must be a number from 0 through 1", sequence_id=seq_id)
+        y_score.append(float(value))
 
     auroc = binary_auroc(y_true, y_score)
     auprc = average_precision(y_true, y_score)
     ranking = pairwise_score_ranking_accuracy(true_values, y_score)
-    brier = 1.0 - sum((score - truth) ** 2 for truth, score in zip(true_values, y_score)) / len(valid_ids)
+    brier = 1.0 - sum((score - truth) ** 2 for truth, score in zip(true_values, y_score)) / len(ids)
     reward = 0.40 * auroc + 0.35 * auprc + 0.20 * ranking + 0.05 * brier
     return ScoreResult(
         clamp01(reward),
@@ -91,31 +116,46 @@ def score_tf_bind(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult
             "ranking_accuracy": ranking,
             "brier_score": clamp01(brier),
         },
-        {"n_pred": len(pred_probs), "n_true": len(valid_ids), "positives": sum(y_true)}
+        {"n_pred": len(pred_probs), "n_true": len(ids), "positives": sum(y_true)}
     )
 
 
 def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any], sequence: Any = None) -> ScoreResult:
-    intron = interval_f1(pred.get("introns", []), expected.get("introns", []), iou_threshold=0.8)
-    boundary = interval_boundary_score(pred.get("introns", []), expected.get("introns", []))
-    count_score = count_accuracy(len(pred.get("introns", [])), len(expected.get("introns", [])))
-    splice_score = None
-    splice_distance = None
-    splice_normalization_length = None
-    if isinstance(sequence, str) and sequence:
-        pred_spliced = splice_sequence(sequence, pred.get("introns", []))
-        true_spliced = expected.get("spliced_sequence") or splice_sequence(sequence, expected.get("introns", []))
-        splice_distance = levenshtein_distance(pred_spliced, true_spliced)
-        splice_normalization_length = len(sequence) - len(true_spliced)
-        splice_score = intron_levenshtein_similarity(
-            pred_spliced,
-            true_spliced,
-            original_length=len(sequence),
-            distance=splice_distance,
-        )
-    reward = splice_score if splice_score is not None else 0.75 * intron["f1"] + 0.15 * boundary + 0.10 * count_score
+    if not isinstance(sequence, str) or not sequence:
+        return invalid_hidden_answer("AnoleGeneParse card must include the genomic sequence")
+    if not isinstance(expected.get("spliced_sequence"), str):
+        return invalid_hidden_answer("AnoleGeneParse hidden answer must include spliced_sequence")
+    if not isinstance(expected.get("introns"), list):
+        return invalid_hidden_answer("AnoleGeneParse hidden answer must include introns")
+    if not isinstance(pred.get("introns"), list):
+        return invalid_answer("answer must contain an introns array")
+
+    true_introns, true_error = parse_intervals(expected["introns"], sequence_length=len(sequence))
+    if true_error:
+        return invalid_hidden_answer(true_error)
+    if not true_introns:
+        return invalid_hidden_answer("AnoleGeneParse hidden answer must contain at least one intron")
+    pred_introns, pred_error = parse_intervals(pred["introns"], sequence_length=len(sequence))
+    if pred_error:
+        return invalid_answer(pred_error)
+
+    pred_spliced = splice_sequence(sequence, pred_introns)
+    true_spliced = expected["spliced_sequence"]
+    splice_distance = levenshtein_distance(pred_spliced, true_spliced)
+    splice_normalization_length = len(sequence) - len(true_spliced)
+    if splice_normalization_length <= 0:
+        return invalid_hidden_answer("ground-truth intron length must be positive")
+    reward = intron_levenshtein_similarity(
+        pred_spliced,
+        true_spliced,
+        original_length=len(sequence),
+        distance=splice_distance,
+    )
+    intron = interval_f1(pred_introns, true_introns, iou_threshold=0.8)
+    boundary = interval_boundary_score(pred_introns, true_introns)
+    count_score = count_accuracy(len(pred_introns), len(true_introns))
     subscores = {
-        "spliced_sequence_levenshtein_similarity": splice_score if splice_score is not None else 0.0,
+        "spliced_sequence_levenshtein_similarity": reward,
         "intron_interval_f1_at_iou_0_8": intron["f1"],
         "precision": intron["precision"],
         "recall": intron["recall"],
@@ -124,12 +164,11 @@ def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any], seq
     }
     info = {
         "matched_introns": intron["matched"],
-        "n_pred": len(pred.get("introns", [])),
-        "n_true": len(expected.get("introns", [])),
+        "n_pred": len(pred_introns),
+        "n_true": len(true_introns),
+        "spliced_sequence_levenshtein_distance": splice_distance,
+        "spliced_sequence_normalization_length": splice_normalization_length,
     }
-    if splice_distance is not None:
-        info["spliced_sequence_levenshtein_distance"] = splice_distance
-        info["spliced_sequence_normalization_length"] = splice_normalization_length
     return ScoreResult(
         clamp01(reward),
         "scored",
@@ -139,28 +178,28 @@ def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any], seq
 
 
 def score_promoter_expression_ranking(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
-    true_order = [str(x) for x in expected.get("tissue_ranking", [])]
-    pred_order = [str(x) for x in pred.get("tissue_ranking", [])]
-    if not true_order:
-        return ScoreResult(0.0, "unscored_missing_true_ranking", {}, {})
-    ndcg = ndcg_for_order(pred_order, expected.get("expression", {}), true_order)
-    top1 = 1.0 if pred_order and pred_order[0] == true_order[0] else 0.0
+    true_order = expected.get("tissue_ranking")
+    pred_order = pred.get("tissue_ranking")
+    if not isinstance(true_order, list) or not true_order or not all(isinstance(tissue, str) for tissue in true_order):
+        return invalid_hidden_answer("hidden answer must contain a non-empty tissue_ranking string array")
+    if len(true_order) < 2:
+        return invalid_hidden_answer("hidden tissue_ranking must contain at least two tissues")
+    if len(set(true_order)) != len(true_order):
+        return invalid_hidden_answer("hidden tissue_ranking must not contain duplicates")
+    if not isinstance(pred_order, list) or not all(isinstance(tissue, str) for tissue in pred_order):
+        return invalid_answer("answer must contain a tissue_ranking string array")
+
     completeness = len(set(pred_order).intersection(true_order)) / len(true_order)
     if len(pred_order) != len(true_order) or set(pred_order) != set(true_order):
-        return ScoreResult(
-            0.0,
-            "invalid_answer",
+        return invalid_answer(
+            "tissue_ranking must contain every candidate tissue exactly once",
             {
-                "ndcg_at_all_tissues": ndcg,
-                "top1_tissue_accuracy": top1,
                 "ranking_completeness": completeness,
             },
-            {
-                "reason": "tissue_ranking must contain every candidate tissue exactly once",
-                "n_pred": len(pred_order),
-                "n_true": len(true_order),
-                "true_top1": true_order[0],
-            },
+            n_pred=len(pred_order),
+            n_true=len(true_order),
+            missing_tissues=sorted(set(true_order) - set(pred_order)),
+            extra_tissues=sorted(set(pred_order) - set(true_order)),
         )
     spearman = spearman_order_corr(pred_order, true_order)
     reward = max(0.0, spearman)
@@ -168,32 +207,36 @@ def score_promoter_expression_ranking(pred: dict[str, Any], expected: dict[str, 
         clamp01(reward),
         "scored",
         {
-            "ndcg_at_all_tissues": ndcg,
-            "top1_tissue_accuracy": top1,
             "spearman_rank_correlation": spearman,
             "ranking_completeness": completeness,
         },
-        {"n_pred": len(pred_order), "n_true": len(true_order), "true_top1": true_order[0]}
+        {"n_pred": len(pred_order), "n_true": len(true_order)}
     )
 
 
 def score_protein_folding(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
-    pred_coords, structure_info = predicted_protein_coordinates(pred)
-    true_coords = normalize_coordinates(expected.get("coordinates", []))
+    pred_coords, structure_info, error = predicted_protein_coordinates(pred)
+    if error:
+        return invalid_answer(error)
+    true_coords, true_error = reference_protein_coordinates(expected)
+    if true_error:
+        return invalid_hidden_answer(true_error)
     common = sorted(set(pred_coords).intersection(true_coords))
     if len(common) < 2:
-        return ScoreResult(
-            0.0,
-            "unscored_insufficient_coordinate_overlap",
+        return invalid_answer(
+            "submitted structure has fewer than two residues overlapping the reference",
             {
-                "coordinate_coverage": len(common) / max(len(true_coords), 1),
+                "coordinate_coverage": len(common) / len(true_coords),
                 "structure_validity": structure_info["validity"],
                 "backbone_atom_completeness": structure_info["backbone_completeness"],
             },
-            {"overlap": len(common), "n_true": len(true_coords), "n_pred": len(pred_coords), **structure_info}
+            overlap=len(common),
+            n_true=len(true_coords),
+            n_pred=len(pred_coords),
+            **structure_info,
         )
     stats = distance_matrix_stats(pred_coords, true_coords, common)
-    coverage = len(common) / max(len(true_coords), 1)
+    coverage = len(common) / len(true_coords)
     drmsd_score = 1.0 / (1.0 + stats["drmsd"] / 2.0)
     local_structure_score = (
         0.90 * drmsd_score
@@ -219,14 +262,26 @@ def score_protein_folding(pred: dict[str, Any], expected: dict[str, Any]) -> Sco
 
 
 def score_rna_folding(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreResult:
-    pred_dot = str(pred.get("dot_bracket", ""))
-    true_dot = str(expected.get("dot_bracket", ""))
+    pred_dot = pred.get("dot_bracket")
+    true_dot = expected.get("dot_bracket")
+    if not isinstance(true_dot, str) or not true_dot:
+        return invalid_hidden_answer("RNAFold hidden answer must contain dot_bracket")
+    if not isinstance(expected.get("base_pairs"), list):
+        return invalid_hidden_answer("RNAFold hidden answer must contain base_pairs")
+    if not isinstance(pred_dot, str):
+        return invalid_answer("answer must contain a dot_bracket string")
+    dot_error = validate_dot_bracket(pred_dot, expected_length=len(true_dot))
+    if dot_error:
+        return invalid_answer(dot_error)
     pred_pairs = dot_bracket_to_pairs(pred_dot)
-    true_pairs = normalize_contacts(expected.get("base_pairs", [])) if expected.get("base_pairs") else dot_bracket_to_pairs(true_dot)
+    true_pairs, true_pair_error = parse_contacts(expected["base_pairs"], sequence_length=len(true_dot))
+    if true_pair_error:
+        return invalid_hidden_answer(true_pair_error)
+    if not true_pairs:
+        return invalid_hidden_answer("RNAFold hidden answer must contain at least one base pair")
     pair = pair_f1(pred_pairs, true_pairs)
     exact = 1.0 if pred_dot == true_dot else 0.0
-    length_valid = 1.0 if len(pred_dot) == len(true_dot) else 0.0
-    reward = 0.8 * pair["f1"] + 0.15 * exact + 0.05 * length_valid
+    reward = pair["f1"]
     return ScoreResult(
         clamp01(reward),
         "scored",
@@ -235,23 +290,41 @@ def score_rna_folding(pred: dict[str, Any], expected: dict[str, Any]) -> ScoreRe
             "base_pair_precision": pair["precision"],
             "base_pair_recall": pair["recall"],
             "exact_dot_bracket_match": exact,
-            "length_validity": length_valid,
         },
         {"matched_base_pairs": pair["matched"], "n_pred_pairs": len(pred_pairs), "n_true_pairs": len(true_pairs)}
     )
 
 
+def parse_intervals(items: Any, sequence_length: int) -> tuple[list[dict[str, int]], str | None]:
+    if not isinstance(items, list):
+        return [], "introns must be an array"
+    intervals = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            return [], f"introns[{index}] must be an object"
+        if not isinstance(item.get("start"), int) or isinstance(item.get("start"), bool):
+            return [], f"introns[{index}].start must be an integer"
+        if not isinstance(item.get("end"), int) or isinstance(item.get("end"), bool):
+            return [], f"introns[{index}].end must be an integer"
+        start = item["start"]
+        end = item["end"]
+        if start < 0 or end > sequence_length or end <= start:
+            return [], f"introns[{index}] must satisfy 0 <= start < end <= sequence length"
+        intervals.append({"start": start, "end": end})
+    intervals.sort(key=lambda item: (item["start"], item["end"]))
+    for prev, current in zip(intervals, intervals[1:]):
+        if current["start"] < prev["end"]:
+            return [], "introns must not overlap"
+    return intervals, None
+
+
 def interval_f1(pred: list[dict[str, Any]], true: list[dict[str, Any]], iou_threshold: float) -> dict[str, Any]:
-    pred_clean = [normalize_interval(x) for x in pred]
-    true_clean = [normalize_interval(x) for x in true]
-    pred_clean = [x for x in pred_clean if x is not None]
-    true_clean = [x for x in true_clean if x is not None]
     used_true: set[int] = set()
     matched = 0
-    for p in pred_clean:
+    for p in pred:
         best_idx = None
         best_iou = 0.0
-        for idx, t in enumerate(true_clean):
+        for idx, t in enumerate(true):
             if idx in used_true:
                 continue
             if p.get("sequence_id") and t.get("sequence_id") and p["sequence_id"] != t["sequence_id"]:
@@ -263,25 +336,9 @@ def interval_f1(pred: list[dict[str, Any]], true: list[dict[str, Any]], iou_thre
         if best_idx is not None and best_iou >= iou_threshold:
             used_true.add(best_idx)
             matched += 1
-    precision = matched / len(pred_clean) if pred_clean else (1.0 if not true_clean else 0.0)
-    recall = matched / len(true_clean) if true_clean else (1.0 if not pred_clean else 0.0)
+    precision = matched / len(pred) if pred else (1.0 if not true else 0.0)
+    recall = matched / len(true) if true else (1.0 if not pred else 0.0)
     return {"precision": precision, "recall": recall, "f1": f1(precision, recall), "matched": matched}
-
-
-def normalize_interval(item: Any) -> dict[str, Any] | None:
-    if not isinstance(item, dict):
-        return None
-    try:
-        start = int(item["start"])
-        end = int(item["end"])
-    except (KeyError, TypeError, ValueError):
-        return None
-    if end <= start:
-        return None
-    out = {"start": start, "end": end}
-    if item.get("sequence_id") is not None:
-        out["sequence_id"] = str(item["sequence_id"])
-    return out
 
 
 def iou(a_start: int, a_end: int, b_start: int, b_end: int) -> float:
@@ -291,82 +348,93 @@ def iou(a_start: int, a_end: int, b_start: int, b_end: int) -> float:
 
 
 def interval_boundary_score(pred: list[dict[str, Any]], true: list[dict[str, Any]]) -> float:
-    pred_clean = [x for x in (normalize_interval(y) for y in pred) if x]
-    true_clean = [x for x in (normalize_interval(y) for y in true) if x]
-    if not pred_clean and not true_clean:
+    if not pred and not true:
         return 1.0
-    if not pred_clean or not true_clean:
+    if not pred or not true:
         return 0.0
     errors = []
-    for t in true_clean:
-        best = min(abs(p["start"] - t["start"]) + abs(p["end"] - t["end"]) for p in pred_clean)
+    for t in true:
+        best = min(abs(p["start"] - t["start"]) + abs(p["end"] - t["end"]) for p in pred)
         errors.append(best / 2.0)
     mean_error = sum(errors) / len(errors)
     return 1.0 / (1.0 + mean_error)
 
 
 def count_accuracy(pred_count: int, true_count: int) -> float:
-    if true_count == 0:
-        return 1.0 if pred_count == 0 else 0.0
-    return clamp01(1.0 - abs(pred_count - true_count) / max(true_count, 1))
+    return clamp01(1.0 - abs(pred_count - true_count) / true_count)
 
 
-def normalize_contacts(items: list[Any]) -> set[tuple[int, int]]:
+def parse_contacts(items: list[Any], sequence_length: int) -> tuple[set[tuple[int, int]], str | None]:
     pairs: set[tuple[int, int]] = set()
-    for item in items:
+    for index, item in enumerate(items):
         if not isinstance(item, dict):
-            continue
-        try:
-            i = int(item["i"])
-            j = int(item["j"])
-        except (KeyError, TypeError, ValueError):
-            continue
+            return set(), f"base_pairs[{index}] must be an object"
+        if not isinstance(item.get("i"), int) or isinstance(item.get("i"), bool):
+            return set(), f"base_pairs[{index}].i must be an integer"
+        if not isinstance(item.get("j"), int) or isinstance(item.get("j"), bool):
+            return set(), f"base_pairs[{index}].j must be an integer"
+        i = item["i"]
+        j = item["j"]
         if i == j:
-            continue
+            return set(), f"base_pairs[{index}] must connect two distinct positions"
+        if i < 0 or j < 0 or i >= sequence_length or j >= sequence_length:
+            return set(), f"base_pairs[{index}] must use indices inside the dot-bracket length"
         pairs.add((min(i, j), max(i, j)))
-    return pairs
+    return pairs, None
 
 
-def normalize_coordinates(items: list[Any]) -> dict[int, tuple[float, float, float]]:
+def reference_protein_coordinates(expected: dict[str, Any]) -> tuple[dict[int, tuple[float, float, float]], str | None]:
+    if not isinstance(expected.get("coordinates"), list):
+        return {}, "KomodoProteinFold hidden answer must contain coordinates"
     coords: dict[int, tuple[float, float, float]] = {}
-    for item in items:
+    for index, item in enumerate(expected["coordinates"]):
         if not isinstance(item, dict):
-            continue
-        try:
-            idx = int(item["residue_index"])
-            x = float(item["x"])
-            y = float(item["y"])
-            z = float(item["z"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if math.isfinite(x) and math.isfinite(y) and math.isfinite(z):
-            coords[idx] = (x, y, z)
-    return coords
+            return {}, f"coordinates[{index}] must be an object"
+        if not isinstance(item.get("residue_index"), int) or isinstance(item.get("residue_index"), bool):
+            return {}, f"coordinates[{index}].residue_index must be an integer"
+        idx = item["residue_index"]
+        values = []
+        for axis in ("x", "y", "z"):
+            if isinstance(item.get(axis), bool):
+                return {}, f"coordinates[{index}].{axis} must be a finite number"
+            try:
+                value = float(item[axis])
+            except (KeyError, TypeError, ValueError):
+                return {}, f"coordinates[{index}].{axis} must be a finite number"
+            if not math.isfinite(value):
+                return {}, f"coordinates[{index}].{axis} must be a finite number"
+            values.append(value)
+        if idx in coords:
+            return {}, f"coordinates[{index}].residue_index must be unique"
+        coords[idx] = (values[0], values[1], values[2])
+    if not coords:
+        return {}, "KomodoProteinFold hidden coordinates must not be empty"
+    return coords, None
 
 
-def predicted_protein_coordinates(pred: dict[str, Any]) -> tuple[dict[int, tuple[float, float, float]], dict[str, Any]]:
-    if isinstance(pred.get("coordinates"), list):
-        coords = normalize_coordinates(pred.get("coordinates", []))
-        return coords, {
-            "structure_format": "coordinate_array",
-            "validity": 1.0 if coords else 0.0,
-            "backbone_completeness": 1.0 if coords else 0.0,
-        }
+def predicted_protein_coordinates(pred: dict[str, Any]) -> tuple[dict[int, tuple[float, float, float]], dict[str, Any], str | None]:
+    has_pdb = "pdb" in pred
+    has_mmcif = "mmcif" in pred
+    if has_pdb == has_mmcif:
+        return {}, {}, "answer must contain exactly one of pdb or mmcif"
 
-    structure = pred.get("pdb", pred.get("mmcif", pred.get("structure", pred.get("structure_file", ""))))
+    structure_format = "pdb" if has_pdb else "mmcif"
+    structure = pred[structure_format]
     if not isinstance(structure, str) or not structure.strip():
-        return {}, {"structure_format": "missing", "validity": 0.0, "backbone_completeness": 0.0}
+        return {}, {}, f"{structure_format} must be a non-empty string"
 
-    coords, atom_stats = parse_pdb_like_ca_coordinates(structure)
-    if not coords and "_atom_site." in structure:
+    if structure_format == "pdb":
+        coords, atom_stats = parse_pdb_like_ca_coordinates(structure)
+    else:
         coords, atom_stats = parse_mmcif_like_ca_coordinates(structure)
-    validity = 1.0 if coords else 0.0
+    if not coords:
+        return {}, {}, f"{structure_format} does not contain parseable CA coordinates"
     backbone_completeness = backbone_atom_completeness(atom_stats)
     return coords, {
-        "structure_format": "pdb_or_mmcif_string",
-        "validity": validity,
+        "structure_format": structure_format,
+        "validity": 1.0,
         "backbone_completeness": backbone_completeness,
-    }
+    }, None
 
 
 def parse_pdb_like_ca_coordinates(text: str) -> tuple[dict[int, tuple[float, float, float]], dict[tuple[str, str, str], set[str]]]:
@@ -453,8 +521,6 @@ def distance_matrix_stats(
             error = pred_d - true_d
             squared_errors.append(error * error)
             abs_errors.append(abs(error))
-    if not squared_errors:
-        return {"drmsd": 0.0, "mean_abs_distance_error": 0.0}
     return {
         "drmsd": math.sqrt(sum(squared_errors) / len(squared_errors)),
         "mean_abs_distance_error": sum(abs_errors) / len(abs_errors),
@@ -473,15 +539,11 @@ def pair_f1(pred: set[tuple[int, int]], true: set[tuple[int, int]]) -> dict[str,
 
 
 def splice_sequence(sequence: str, introns: list[Any]) -> str:
-    clean = [x for x in (normalize_interval(y) for y in introns) if x]
-    clean.sort(key=lambda item: (item["start"], item["end"]))
     pieces = []
     cursor = 0
-    for intron in clean:
-        start = max(0, min(len(sequence), intron["start"]))
-        end = max(0, min(len(sequence), intron["end"]))
-        if start < cursor or end <= start:
-            continue
+    for intron in introns:
+        start = intron["start"]
+        end = intron["end"]
         pieces.append(sequence[cursor:start])
         cursor = end
     pieces.append(sequence[cursor:])
@@ -497,8 +559,6 @@ def intron_levenshtein_similarity(
     if distance is None:
         distance = levenshtein_distance(predicted_spliced, ground_truth_spliced)
     removed_length = original_length - len(ground_truth_spliced)
-    if removed_length <= 0:
-        return 1.0 if distance == 0 else 0.0
     return max(0.0, 1.0 - distance / removed_length)
 
 
@@ -529,26 +589,22 @@ def dot_bracket_to_pairs(dot: str) -> set[tuple[int, int]]:
     return pairs
 
 
-def ndcg_for_order(pred_order: list[str], relevance: dict[str, Any], true_order: list[str]) -> float:
-    rel = {}
-    for rank, label in enumerate(true_order):
-        fallback = len(true_order) - rank
-        rel[label] = float(relevance.get(label, fallback)) if is_number(relevance.get(label, fallback)) else float(fallback)
-    dcg = dcg_for_labels(pred_order, rel)
-    ideal = dcg_for_labels(sorted(true_order, key=lambda label: rel[label], reverse=True), rel)
-    return dcg / ideal if ideal else 0.0
-
-
-def dcg_for_labels(labels: list[str], rel: dict[str, float]) -> float:
-    total = 0.0
-    seen: set[str] = set()
-    for rank, label in enumerate(labels, start=1):
-        if label in seen:
-            continue
-        seen.add(label)
-        gain = rel.get(label, 0.0)
-        total += gain / math.log2(rank + 1)
-    return total
+def validate_dot_bracket(dot: str, expected_length: int) -> str | None:
+    if len(dot) != expected_length:
+        return "dot_bracket length must match the RNA sequence length"
+    stack = []
+    for index, char in enumerate(dot):
+        if char == "(":
+            stack.append(index)
+        elif char == ")":
+            if not stack:
+                return "dot_bracket parentheses must be balanced and properly nested"
+            stack.pop()
+        elif char != ".":
+            return "dot_bracket may contain only '.', '(', and ')'"
+    if stack:
+        return "dot_bracket parentheses must be balanced and properly nested"
+    return None
 
 
 def spearman_order_corr(pred_order: list[str], true_order: list[str]) -> float:
@@ -556,10 +612,9 @@ def spearman_order_corr(pred_order: list[str], true_order: list[str]) -> float:
     n = len(labels)
     if n < 2:
         return 1.0
-    missing_rank = n + 1
     true_ranks = {label: idx + 1 for idx, label in enumerate(true_order)}
     pred_ranks = {label: idx + 1 for idx, label in enumerate(pred_order)}
-    a = [float(pred_ranks.get(label, missing_rank)) for label in labels]
+    a = [float(pred_ranks[label]) for label in labels]
     b = [float(true_ranks[label]) for label in labels]
     return pearson_corr(a, b)
 
@@ -577,13 +632,11 @@ def pairwise_score_ranking_accuracy(true_scores: list[float], pred_scores: list[
                 correct += 0.5
             elif (pred_scores[i] > pred_scores[j]) == true_cmp:
                 correct += 1.0
-    return correct / total if total else 1.0
+    return correct / total
 
 
 def average_precision(y_true: list[int], y_score: list[float]) -> float:
     positives = sum(y_true)
-    if positives == 0:
-        return 1.0 if all(score <= 0.5 for score in y_score) else 0.0
     order = sorted(range(len(y_score)), key=lambda i: y_score[i], reverse=True)
     hits = 0
     total = 0.0
@@ -597,8 +650,6 @@ def average_precision(y_true: list[int], y_score: list[float]) -> float:
 def binary_auroc(y_true: list[int], y_score: list[float]) -> float:
     positives = [score for label, score in zip(y_true, y_score) if label == 1]
     negatives = [score for label, score in zip(y_true, y_score) if label == 0]
-    if not positives or not negatives:
-        return 1.0
     total = 0
     wins = 0.0
     for pos in positives:
@@ -608,7 +659,7 @@ def binary_auroc(y_true: list[int], y_score: list[float]) -> float:
                 wins += 1.0
             elif pos == neg:
                 wins += 0.5
-    return wins / total if total else 0.0
+    return wins / total
 
 
 def pearson_corr(a: list[float], b: list[float]) -> float:
@@ -628,12 +679,14 @@ def f1(precision: float, recall: float) -> float:
     return 0.0 if precision + recall == 0.0 else 2.0 * precision * recall / (precision + recall)
 
 
-def is_number(value: Any) -> bool:
+def is_probability(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
     try:
-        float(value)
-        return True
+        number = float(value)
     except (TypeError, ValueError):
         return False
+    return math.isfinite(number) and 0.0 <= number <= 1.0
 
 
 def clamp01(value: float) -> float:

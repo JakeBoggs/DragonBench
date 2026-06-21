@@ -88,10 +88,10 @@ The scorer lives in `dragonbench/scoring.py`.
 Task scoring:
 
 - `AnoleGeneParse`: Levenshtein similarity normalized by ground-truth intron length; interval F1, boundary score, and intron count accuracy are diagnostics
-- `AnolePromoterExpression`: NDCG over tissue ranking, top-1 tissue accuracy, Spearman rank correlation
+- `AnolePromoterExpression`: chance-clipped Spearman rank correlation; incomplete or duplicate rankings score zero
 - `KomodoProteinFold`: coordinate coverage multiplied by local all-atom PDB/mmCIF validity and C-alpha distance-matrix similarity. Low residue coverage caps the reward.
-- `DragonTFBind`: interval F1 at IoU >= 0.5, center-distance score, confidence presence
-- `RNAFold`: base-pair F1, exact dot-bracket match, length validity
+- `DragonTFBind`: weighted AUROC, AUPRC, ranking accuracy, and Brier score over required binding probabilities
+- `RNAFold`: base-pair F1 over a valid, length-matched dot-bracket structure
 
 The scoring functions are deterministic, JSON-only, and avoid LLM judging.
 
@@ -119,7 +119,7 @@ Build a 3D report:
 python3 scripts/build_protein_3d_report.py --answers eval/smoke_answers.jsonl --out reports/protein_folding_3d.html
 ```
 
-The single-model report renders the ground-truth structure in green, the submitted all-atom PDB/mmCIF model in orange, and an overlay. Coordinate-array answers are still supported as a fallback and render as C-alpha traces.
+The single-model report renders the ground-truth structure in green, the submitted all-atom PDB/mmCIF model in orange, and an overlay. Model answers must use the canonical PDB/mmCIF JSON shape.
 
 Incomplete-backbone PDB/mmCIF answers, such as mostly C-alpha-only structures, are rendered as explicit C-alpha traces so the submitted geometry stays visible in the single-answer viewer.
 
@@ -162,7 +162,7 @@ python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```
 
-The visualization path is now ready for the all-atom `data-spec.md` output shape. The scoring path still has a C-alpha fallback until the separate TM-score/lDDT scorer work lands.
+The visualization path and scoring path both consume the all-atom `data-spec.md` output shape. The scorer extracts C-alpha coordinates from the submitted PDB/mmCIF structure for the current distance-matrix metric.
 
 ### HUD Visualization Links
 
@@ -212,7 +212,7 @@ The environment yields a structured grade frame, not only a bare float:
   "status": "scored",
   "subscores": {"base_pair_f1": 0.75},
   "info": {"matched_base_pairs": 3},
-  "scoring_explanation": "Reward = 0.80 * base_pair_f1 + ...",
+  "scoring_explanation": "Reward = base_pair_f1.",
   "format_contract": "Return one JSON object matching the task's required answer schema."
 }
 ```

@@ -19,7 +19,6 @@ auto_respond = false
 [claude]
 model = "claude-sonnet-4-6"
 max_tokens = 32768
-use_computer_beta = true
 
 [openai]
 # model = "gpt-5.5"

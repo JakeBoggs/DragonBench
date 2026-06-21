@@ -67,7 +67,7 @@ def main() -> None:
             answer = {"binding_probabilities": hidden["binding_probabilities"]}
         else:
             raise ValueError(f"unsupported task: {task}")
-        rows.append({"id": card["id"], "answer": f"<answer>{json.dumps(answer)}</answer>"})
+        rows.append({"id": card["id"], "answer": answer})
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w") as f:
         for row in rows:

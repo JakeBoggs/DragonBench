@@ -218,9 +218,8 @@ Prefer proteins that:
 * represent a variety of biological functions.
 
 The complete reference PDB task-answer JSON must remain below 60,000 characters.
-HUD stores this payload through `submit_answer` and transports only its receipt;
-the size check remains as a dataset regression guard rather than a prompt-level
-fallback to reduced coordinate-only output.
+The size check ensures the complete all-atom structure fits directly in the
+model response and HUD transport without a reduced coordinate-only fallback.
 
 Avoid:
 

@@ -22,24 +22,16 @@ hud eval tasks.py claude --max-concurrent 5 --max-steps 1 --config max_tokens=32
 ```
 
 Replace `claude` with any model string supported by the HUD gateway.
-Do not use `--auto-respond` for DragonBench. Each task expects one final
-lowercase `<answer>...</answer>` block, and auto-response can incorrectly send a
-follow-up `CONTINUE` after a valid final answer.
+Do not use `--auto-respond` for DragonBench. Each task expects one direct JSON
+response, and an automatic follow-up can replace a valid answer.
 Use a bounded output cap such as `max_tokens=32768` for protein-folding runs;
 larger caps can keep the gateway call open for several minutes before HUD sees
 any assistant message.
 
-Models must first call `submit_answer` with the task JSON, then end with the
-returned receipt in this shape:
-
-```xml
-<answer>{"answer_ref":"runs/hud_answers/DBEVAL-V0-001/abc123.json","sha256":"..."}</answer>
-```
-
-Direct task JSON in the final block is invalid for HUD grading. The scorer
-accepts exact raw task JSON for local tooling, but HUD resolves the receipt to
-the stored answer artifact. Zero lowercase blocks, uppercase tags, malformed
-receipt JSON, missing artifacts, or checksum mismatches score `0`.
+Each task family has a dedicated prompt with task-specific input and output
+instructions. Benchmark internals and scoring details are omitted. Models
+return exactly one JSON object matching the requested schema, without XML tags,
+Markdown fences, or surrounding prose.
 
 ## Current Eval Status
 
@@ -221,7 +213,7 @@ The environment yields a structured grade frame, not only a bare float:
   "subscores": {"base_pair_f1": 0.75},
   "info": {"matched_base_pairs": 3},
   "scoring_explanation": "Reward = 0.80 * base_pair_f1 + ...",
-  "format_contract": "HUD eval output must end with a final lowercase <answer>...</answer> block containing the submit_answer receipt JSON..."
+  "format_contract": "Return one JSON object matching the task's required answer schema."
 }
 ```
 

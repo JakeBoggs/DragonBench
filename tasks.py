@@ -1,16 +1,12 @@
 import os
 import hashlib
-import json
-import warnings
 from pathlib import Path
-from typing import Any
 from urllib.parse import quote
 
 from dragonbench.io import load_jsonl
 from dragonbench.logging import log_score_event, make_score_event
 from dragonbench.prompts import render_prompt
-from dragonbench.scoring import ScoreResult, score_answer
-from dragonbench.submissions import require_submitted_answer, write_answer_artifact
+from dragonbench.scoring import score_answer
 
 try:
     from hud import Environment, Taskset
@@ -98,57 +94,16 @@ def make_result_content(card, result, info):
     return "\n".join(lines)
 
 
-def submit_answer(question_id: str, answer: dict[str, Any]) -> dict[str, Any]:
-    """Store a final DragonBench answer and return the small receipt to place in <answer>."""
-    cards = {card["id"]: card for card in load_jsonl(DATASET_PATH)}
-    if question_id not in cards:
-        return {
-            "ok": False,
-            "error": f"unknown question_id: {question_id}",
-            "known_question_ids": sorted(cards),
-        }
-    try:
-        receipt = write_answer_artifact(question_id, answer)
-    except (OSError, TypeError, ValueError) as exc:
-        return {"ok": False, "error": str(exc)}
-
-    final_answer = {
-        "answer_ref": receipt["answer_ref"],
-        "sha256": receipt["sha256"],
-    }
-    return {
-        "ok": True,
-        **receipt,
-        "final_answer": final_answer,
-        "final_answer_block": f"<answer>{json.dumps(final_answer, separators=(',', ':'))}</answer>",
-    }
-
-
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    env.tool(submit_answer)
-
-
 @env.template()
 async def dragonbench_question(question_id: str):
     cards = {card["id"]: card for card in load_jsonl(DATASET_PATH)}
     card = cards[question_id]
     answer = yield render_prompt(card)
-    resolved_answer, submission_info, resolve_error = require_submitted_answer(answer)
-    if resolve_error:
-        result = ScoreResult(
-            0.0,
-            "invalid_answer_ref",
-            {"answer_ref": 0.0},
-            {"error": resolve_error},
-        )
-    else:
-        result = score_answer(card, resolved_answer)
-    log_score_event(card, result, resolved_answer, emit_stdout=True, include_answer_preview=False)
+    result = score_answer(card, answer)
+    log_score_event(card, result, answer, emit_stdout=True, include_answer_preview=False)
     event = make_score_event(card, result, include_answer_preview=False)
     info = dict(result.info)
-    info.update(submission_info)
-    info.update(make_visualization_info(card, resolved_answer))
+    info.update(make_visualization_info(card, answer))
     yield {
         "score": result.reward,
         "content": make_result_content(card, result, info),

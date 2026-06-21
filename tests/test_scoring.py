@@ -279,7 +279,21 @@ def test_rnafold_task_name_scores_dot_bracket():
     assert result.reward == 1.0
 
 
-def test_parser_accepts_xml_wrapped_json():
+def test_parser_accepts_raw_json_string():
+    card = {
+        "task": "RNAFold",
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {"dot_bracket": "(((...)))", "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}]},
+        },
+    }
+    answer = '{"dot_bracket": "(((...)))"}'
+    result = score_answer(card, answer)
+    assert result.status == "scored"
+    assert result.reward == 1.0
+
+
+def test_parser_rejects_xml_wrapper():
     card = {
         "task": "RNAFold",
         "hidden_answer": {
@@ -289,52 +303,11 @@ def test_parser_accepts_xml_wrapped_json():
     }
     answer = '<answer>{"dot_bracket": "(((...)))"}</answer>'
     result = score_answer(card, answer)
-    assert result.status == "scored"
-    assert result.reward == 1.0
-
-
-def test_parser_accepts_reasoning_with_final_answer_xml():
-    card = {
-        "task": "RNAFold",
-        "hidden_answer": {
-            "status": "verified",
-            "answer": {"dot_bracket": "(((...)))", "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}]},
-        },
-    }
-    answer = 'I think through the sequence first.\n<answer>{"dot_bracket": "(((...)))"}</answer>'
-    result = score_answer(card, answer)
-    assert result.status == "scored"
-    assert result.reward == 1.0
-
-
-def test_parser_uses_last_answer_block():
-    card = {
-        "task": "RNAFold",
-        "hidden_answer": {
-            "status": "verified",
-            "answer": {"dot_bracket": "(((...)))", "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}]},
-        },
-    }
-    answer = 'Reasoning.\n<answer>{"dot_bracket": "........."}</answer>\n<answer>{"dot_bracket": "(((...)))"}</answer>'
-    result = score_answer(card, answer)
-    assert result.status == "scored"
-    assert result.reward == 1.0
-
-
-def test_parser_rejects_uppercase_answer_tag():
-    card = {
-        "task": "RNAFold",
-        "hidden_answer": {
-            "status": "verified",
-            "answer": {"dot_bracket": "(((...)))", "base_pairs": [{"i": 0, "j": 8}, {"i": 1, "j": 7}, {"i": 2, "j": 6}]},
-        },
-    }
-    result = score_answer(card, '<Answer>{"dot_bracket": "(((...)))"}</Answer>')
     assert result.status == "invalid_answer"
     assert result.reward == 0.0
 
 
-def test_parser_rejects_prose_without_final_answer_xml():
+def test_parser_rejects_prose_around_json():
     card = {
         "task": "RNAFold",
         "hidden_answer": {

@@ -70,27 +70,23 @@ It contains 100 scoreable cards:
 - 20 `RNAFold`
 
 Each scoreable card has a hidden answer with `status: verified`, so every task can be scored automatically. The hidden answers are not included in model prompts.
-Protein-folding cards use 80–100 aa sequences. Fixture generation keeps each complete reference PDB task-answer JSON below 60,000 characters, while HUD transports only the small `submit_answer` receipt.
+Protein-folding cards use 80–100 aa sequences. Fixture generation keeps each
+complete reference PDB answer below 60,000 JSON characters so it fits directly
+within the model response and HUD transport.
 
 ## Model Output Contract
 
-HUD prompts require the model to submit the task answer through the `submit_answer` tool, then end with a lowercase final answer block containing only the returned receipt:
-
-```xml
-<answer>{"answer_ref":"runs/hud_answers/DBEVAL-V0-001/abc123.json","sha256":"..."}</answer>
-```
+HUD uses a separate prompt for each task family. Each prompt explains only its
+task, input conventions, and answer schema. Scoring
+formulas, metric names, source metadata, hidden answers, and other benchmark
+internals are not exposed to the model.
 
 Rules:
 
-- The `submit_answer` tool receives `question_id` and `answer`; `answer` must be the JSON object matching the task schema.
-- The final answer must be the last thing in the response.
-- The scorer parses the last lowercase `<answer>...</answer>` block as the `submit_answer` receipt.
-- If multiple lowercase answer blocks appear, only the last one is scored.
-- Direct task answers inside `<answer>` are invalid for HUD grading and score `0`.
-- The receipt JSON inside the block must include `answer_ref` and `sha256`.
-- Uppercase tags like `<Answer>` are invalid.
-- Zero lowercase blocks or malformed JSON scores `0`.
-- Raw task-answer JSON is still accepted by local scoring helpers for scripts and unit tests, but not by the HUD eval harness.
+- Return exactly one JSON object matching the task schema.
+- Do not wrap the JSON in XML tags or Markdown fences.
+- Do not add reasoning or explanatory text around the JSON.
+- Malformed JSON or a non-object top-level value scores `0`.
 
 ## Scoring
 
@@ -168,13 +164,9 @@ For each task, the environment yields a structured grade payload:
   "content": "DBEVAL-V0-096 DragonRNAFolding scored 0.600 (scored).",
   "status": "scored",
   "subscores": {"base_pair_f1": 0.75},
-  "info": {
-    "matched_base_pairs": 3,
-    "answer_submission_mode": "artifact",
-    "answer_ref": "/abs/path/runs/hud_answers/DBEVAL-V0-096/abc123.json"
-  },
+  "info": {"matched_base_pairs": 3},
   "scoring_explanation": "Reward = ...",
-  "format_contract": "HUD eval output must end with a final lowercase <answer>...</answer> block containing the submit_answer receipt JSON: answer_ref and sha256..."
+  "format_contract": "Return one JSON object matching the task's required answer schema."
 }
 ```
 

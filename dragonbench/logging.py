@@ -36,9 +36,8 @@ def make_score_event(card: dict[str, Any], result: ScoreResult, answer: Any | No
         "info": result.info,
         "scoring_explanation": explain_scoring(card, result),
         "format_contract": (
-            "HUD eval output must end with a final lowercase <answer>...</answer> block containing "
-            "the submit_answer receipt JSON: answer_ref and sha256. Direct task answers in the final "
-            "block are invalid for HUD grading."
+            "Return one JSON object matching the task's required answer schema. "
+            "Markdown fences and explanatory text are not part of the answer."
         ),
     }
     if answer is not None and include_answer_preview:

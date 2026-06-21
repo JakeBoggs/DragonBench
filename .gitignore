@@ -4,7 +4,6 @@ __pycache__/
 eval/smoke_answers.jsonl
 eval/demo_model_b_answers.jsonl
 logs/
-runs/
 
 # Local HUD state
 .hud/

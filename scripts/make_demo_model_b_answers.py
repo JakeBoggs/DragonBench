@@ -1,4 +1,3 @@
-import json
 import math
 import sys
 from pathlib import Path
@@ -58,7 +57,7 @@ def main() -> None:
                 idx = int(point["residue_index"])
                 coords.append(perturb_point(idx, point))
             answer = {"pdb": coordinates_to_ca_pdb(coords)}
-        rows.append({"id": card["id"], "answer": f"<answer>{json.dumps(answer)}</answer>"})
+        rows.append({"id": card["id"], "answer": answer})
 
     dump_jsonl(OUT, rows)
     print(OUT)

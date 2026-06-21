@@ -15,8 +15,8 @@ Coordinate rules:
 Genomic sequence ({len(sequence)} bases):
 {sequence}
 
-Required task answer:
-{{"introns":[{{"start":341,"end":435}}]}}
+Required answer format:
+{{"introns":[{{"start":[start],"end":[end]}}]}}
 
 Return only the JSON object, with your predicted coordinates replacing the
 example values. Do not use Markdown or add explanatory text."""
@@ -43,7 +43,7 @@ Candidate tissues:
 Promoter sequence ({len(sequence)} bases):
 {sequence}
 
-Required task answer:
+Required answer format:
 {{"tissue_ranking":["highest_tissue","next_tissue","..."]}}
 
 Return only the JSON object containing the complete ranking. Do not use Markdown
@@ -69,7 +69,7 @@ Structure rules:
 Protein sequence ({len(sequence)} amino acids):
 {sequence}
 
-Required task answer using the preferred format:
+Required answer format:
 {{"pdb":"ATOM      1  N   ...\\n...\\nEND"}}
 
 Alternative accepted task answer:
@@ -106,7 +106,7 @@ Transcription-factor protein sequence ({len(tf_sequence)} amino acids):
 DNA candidates:
 {candidate_json}
 
-Required task answer:
+Required answer format:
 {{"binding_probabilities":{probability_json}}}
 
 Return only the JSON object containing all probabilities. Do not use Markdown or
@@ -129,7 +129,7 @@ Dot-bracket rules:
 RNA sequence ({len(sequence)} nucleotides):
 {sequence}
 
-Required task answer:
+Required answer format:
 {{"dot_bracket":"(((...)))..."}}
 
 Return only the JSON object containing a {len(sequence)}-character dot-bracket

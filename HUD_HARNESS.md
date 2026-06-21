@@ -15,18 +15,65 @@ pip install hud-python
 hud set HUD_API_KEY=...
 ```
 
-## Run
+For Modal-backed full runs, copy the HUD key into Modal:
 
 ```bash
-hud eval tasks.py claude --max-concurrent 5 --max-steps 1 --config max_tokens=32768
+modal secret create dragonbench-hud-eval --from-dotenv "$HOME/.hud/.env" --force
+```
+
+## Preferred Run Path
+
+For full sweeps, run the eval driver on Modal CPU and route model calls through
+HUD Gateway:
+
+```bash
+modal run --detach modal_hud_eval.py \
+  --models claude-opus-4-8,gemini-3.1-pro-preview,gpt-5.5,gpt-5.4,gpt-5.4-mini,gpt-5,gpt-4o \
+  --all \
+  --max-concurrent 10 \
+  --max-steps 2 \
+  --max-output-tokens 32768
+```
+
+This runs `hud eval tasks.py <model> --gateway ...` inside Modal. The local
+laptop can disconnect after submission; the Modal workers continue running the
+eval driver, local task environment, and deterministic grading. HUD still records
+jobs and traces for the resulting `tasks.py` runs.
+
+Use `--wait` for small smoke tests:
+
+```bash
+modal run modal_hud_eval.py \
+  --models gpt-5.4-mini \
+  --task-ids 60 \
+  --max-concurrent 1 \
+  --max-steps 2 \
+  --max-output-tokens 8192 \
+  --wait
+```
+
+Recommended defaults:
+
+- `--max-steps 2`: one assistant tool-call step plus final evaluation.
+- `--max-concurrent 10`: enough throughput without overloading HUD Gateway.
+- `--max-output-tokens 32768`: needed for protein-folding PDB/mmCIF outputs.
+- Do not use `--auto-respond`; each task expects one direct tool submission.
+
+## Local Run
+
+```bash
+hud eval tasks.py claude --gateway --max-concurrent 5 --max-steps 2 --config max_tokens=32768
 ```
 
 Replace `claude` with any model string supported by the HUD gateway.
-Do not use `--auto-respond` for DragonBench. Each task expects one direct JSON
-response, and an automatic follow-up can replace a valid answer.
-Use a bounded output cap such as `max_tokens=32768` for protein-folding runs;
-larger caps can keep the gateway call open for several minutes before HUD sees
-any assistant message.
+
+## HUD Platform Remote Runs
+
+The deployed taskset can also be run with `hud eval <taskset> <model> --remote`,
+but this is no longer the preferred full-eval path. In larger sweeps, hosted
+remote rollouts have shown long provider/platform queue times, detached-session
+rollout errors, and provider capacity failures. Use remote runs for deployment
+smoke tests; use `modal_hud_eval.py` for full benchmark sweeps.
 
 Each task family has a dedicated prompt with task-specific input and output
 instructions. Benchmark internals and scoring details are omitted. Models

@@ -33,6 +33,7 @@ scripts/
   score_answers.py
   build_protein_3d_report.py
 tasks.py                           # HUD taskset entrypoint
+modal_hud_eval.py                  # preferred cloud eval runner on Modal CPU
 Dockerfile.hud                     # containerized HUD environment
 ```
 
@@ -51,6 +52,12 @@ Set the HUD API key before running hosted evals:
 
 ```bash
 hud set HUD_API_KEY=...
+```
+
+For Modal-backed evals, mirror the HUD key into a Modal secret:
+
+```bash
+modal secret create dragonbench-hud-eval --from-dotenv "$HOME/.hud/.env" --force
 ```
 
 ## Dataset
@@ -138,7 +145,42 @@ python3 scripts/score_answers.py --answers eval/demo_model_b_answers.jsonl
 
 ## HUD Eval
 
-Run the full eval:
+Preferred full-eval path: run the HUD eval driver on Modal CPU and route model
+calls through HUD Gateway. This keeps orchestration and grading off your laptop,
+while avoiding HUD hosted-rollout queueing for each task.
+
+```bash
+modal run --detach modal_hud_eval.py \
+  --models claude-opus-4-8,gemini-3.1-pro-preview,gpt-5.5,gpt-5.4,gpt-5.4-mini,gpt-5,gpt-4o \
+  --all \
+  --max-concurrent 10 \
+  --max-steps 2 \
+  --max-output-tokens 32768
+```
+
+Smoke a single task and wait for the result:
+
+```bash
+modal run modal_hud_eval.py \
+  --models gpt-5.4-mini \
+  --task-ids 60 \
+  --max-concurrent 1 \
+  --max-steps 2 \
+  --max-output-tokens 8192 \
+  --wait
+```
+
+The Modal runner executes:
+
+```bash
+hud eval tasks.py <model> --gateway ...
+```
+
+inside the Modal container. HUD still records jobs/traces, but the job source is
+`tasks.py` and not a platform taskset. This is intentional: grading happens in
+the Modal worker process and model calls go through HUD Gateway.
+
+Local quick run:
 
 ```bash
 hud eval tasks.py claude
@@ -149,6 +191,11 @@ Run a subset:
 ```bash
 hud eval tasks.py claude --task-ids 20 -y
 ```
+
+HUD platform tasksets and `--remote` are useful for smoke testing the deployed
+environment, but they are not the preferred path for full benchmark sweeps. In
+practice, remote rollouts can queue for a long time per provider and may hit
+platform-side rollout errors. For full runs, prefer `modal_hud_eval.py`.
 
 The HUD task entrypoint is:
 

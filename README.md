@@ -1,6 +1,6 @@
 # DragonBench
 
-DragonBench is a 100-question genetics benchmark for evaluating models on dataset-backed "dragon design" tasks. The current eval is intentionally small enough for full human review, but runnable end-to-end through HUD with deterministic scoring.
+DragonBench is a 100-question genetics benchmark for evaluating models on some of the intermediate genetic engineering tasks required to produce a dragon. The current eval is runnable end-to-end through HUD with deterministic scoring.
 
 The benchmark has 5 task families with 20 questions each:
 
@@ -37,8 +37,6 @@ modal_hud_eval.py                  # preferred cloud eval runner on Modal CPU
 Dockerfile.hud                     # containerized HUD environment
 ```
 
-Smoke answers, demo answers, reports, logs, and the local 3Dmol.js asset are generated artifacts and are ignored by Git.
-
 ## Setup
 
 Install Python dependencies:
@@ -68,7 +66,7 @@ The runnable eval is:
 eval/dragonbench_eval_v0.scoreable.jsonl
 ```
 
-It contains 100 scoreable cards:
+It contains 100 scoreable tasks:
 
 - 20 `AnoleGeneParse`
 - 20 `AnolePromoterExpression`
@@ -76,24 +74,17 @@ It contains 100 scoreable cards:
 - 20 `DragonTFBind`
 - 20 `RNAFold`
 
-Each scoreable card has a hidden answer with `status: verified`, so every task can be scored automatically. The hidden answers are not included in model prompts.
-Protein-folding cards use 80–100 aa sequences. Fixture generation keeps each
-complete reference PDB answer below 60,000 JSON characters so it fits directly
-within the model response and HUD transport.
-
 ## Model Output Contract
 
 HUD uses a separate prompt for each task family. Each prompt explains only its
-task, input conventions, and answer schema. Scoring
-formulas, metric names, source metadata, hidden answers, and other benchmark
-internals are not exposed to the model.
+task, input conventions, and answer schema.
 
 Rules:
 
 - Return exactly one JSON object matching the task schema.
 - Do not wrap the JSON in XML tags or Markdown fences.
 - Do not add reasoning or explanatory text around the JSON.
-- Malformed JSON or a non-object top-level value scores `0`.
+- Malformed JSON scores `0`.
 
 ## Scoring
 

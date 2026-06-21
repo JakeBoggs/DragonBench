@@ -87,11 +87,6 @@ def render_dragon_tf_bind_prompt(card: dict[str, Any]) -> str:
     tf_sequence = model_input["tf_sequence"]
     candidates = model_input["dna_candidates"]
     candidate_json = json.dumps(candidates, ensure_ascii=False, indent=2, sort_keys=True)
-    probability_example = {
-        candidate["id"]: round(0.9 - 0.8 * index / max(len(candidates) - 1, 1), 2)
-        for index, candidate in enumerate(candidates)
-    }
-    probability_json = json.dumps(probability_example, separators=(",", ":"))
     return f"""Given the transcription-factor protein sequence and the DNA candidates below,
 estimate the probability that each candidate is bound by the transcription
 factor.
@@ -109,7 +104,11 @@ DNA candidates:
 {candidate_json}
 
 Required answer format:
-{{"binding_probabilities":{probability_json}}}
+- Return a JSON object with exactly one top-level key: "binding_probabilities".
+- "binding_probabilities" must map every supplied candidate ID to one numeric
+  probability from 0 through 1.
+- Shape only, using placeholders rather than example values:
+  {{"binding_probabilities":{{"<candidate_id>":<number_between_0_and_1>}}}}
 
 Return only the JSON object containing all probabilities. Do not use Markdown or
 add explanatory text."""

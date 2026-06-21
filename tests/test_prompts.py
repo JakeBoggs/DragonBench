@@ -94,6 +94,11 @@ def test_dragon_tf_bind_has_custom_prompt():
     assert prompt.startswith("Given the transcription-factor protein sequence")
     assert "one probability for every supplied candidate ID" in prompt
     assert '"seq_1"' in prompt
+    assert "<candidate_id>" in prompt
+    assert "<number_between_0_and_1>" in prompt
+    assert '"binding_probabilities":{"seq_1"' not in prompt
+    assert "0.9" not in prompt
+    assert "0.81" not in prompt
     assert_direct_json_contract(prompt)
     assert_no_benchmark_internals(prompt)
 

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -172,6 +173,7 @@ def build_tf_binding(start):
     records = load_jsonl_required(JASPAR_TFBIND_FIXTURE, 20)
     for j, record in enumerate(records[:20]):
         idx = start + j
+        dna_candidates, binding_probabilities = shuffled_tf_candidates(record)
         rows.append(common(
             idx,
             "DragonTFBind",
@@ -182,10 +184,10 @@ def build_tf_binding(start):
                 record["uniprot_id"],
             ),
             "Given one transcription factor protein sequence and 10 DNA sequences, predict relative binding probabilities for the DNA sequences.",
-            {"tf_sequence": record["tf_sequence"], "dna_candidates": record["dna_candidates"]},
+            {"tf_sequence": record["tf_sequence"], "dna_candidates": dna_candidates},
             {"binding_probabilities": {"seq_id": "number_0_to_1"}},
             {
-                "binding_probabilities": record["binding_probabilities"],
+                "binding_probabilities": binding_probabilities,
                 "tf": record["tf_name"],
                 "matrix_id": record["matrix_id"],
                 "uniprot_id": record["uniprot_id"],
@@ -195,6 +197,25 @@ def build_tf_binding(start):
             "TF binding is the smallest scoreable proxy for sequence-level regulatory control.",
         ))
     return rows
+
+
+def shuffled_tf_candidates(record):
+    keyed_candidates = []
+    for candidate in record["dna_candidates"]:
+        original_id = candidate["id"]
+        sequence = candidate["sequence"]
+        sort_key = hashlib.sha256(
+            f"{record['matrix_id']}|{record['uniprot_id']}|{original_id}|{sequence}".encode()
+        ).hexdigest()
+        keyed_candidates.append((sort_key, sequence, record["binding_probabilities"][original_id]))
+
+    dna_candidates = []
+    binding_probabilities = {}
+    for index, (_, sequence, probability) in enumerate(sorted(keyed_candidates), start=1):
+        candidate_id = f"seq_{index:02d}"
+        dna_candidates.append({"id": candidate_id, "sequence": sequence})
+        binding_probabilities[candidate_id] = probability
+    return dna_candidates, binding_probabilities
 
 
 def build_rna_folding(start):

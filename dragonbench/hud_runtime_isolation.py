@@ -19,9 +19,6 @@ def _extract_submit_answer(trace: Any) -> Any | None:
             except json.JSONDecodeError:
                 return answer_json
             return parsed_answer if isinstance(parsed_answer, dict) else answer_json
-        answer = arguments.get("answer", arguments)
-        if isinstance(answer, dict):
-            return answer
     return None
 
 

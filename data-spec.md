@@ -271,8 +271,8 @@ Given one transcription factor protein sequence and 10 DNA sequences, predict re
 ```json
 {
   "binding_probabilities": {
-    "seq_01": 0.91,
-    "seq_02": 0.07
+    "seq_01": "<number from 0 through 1>",
+    "seq_02": "<number from 0 through 1>"
   }
 }
 ```
@@ -295,6 +295,8 @@ For each question:
 
 * provide exactly 10 DNA sequences;
 * include a mix of strong binders, weak/intermediate binders, and non-binders;
+* shuffle candidate order and reassign candidate IDs after candidate selection
+  so IDs do not encode binding rank;
 * keep sequence lengths reasonably consistent.
 
 Avoid:

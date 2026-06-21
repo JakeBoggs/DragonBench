@@ -76,7 +76,7 @@ def test_hud_runtime_isolation_grades_submitted_tool_answer():
                 ToolStep(
                     call=MCPToolCall(
                         name="submit_answer",
-                        arguments={"answer": {"introns": [{"start": 1, "end": 4}]}},
+                        arguments={"answer_json": '{"introns":[{"start":1,"end":4}]}'},
                     )
                 )
             )

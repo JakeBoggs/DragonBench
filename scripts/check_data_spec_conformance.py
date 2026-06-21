@@ -75,6 +75,10 @@ def main():
         elif task == "DragonTFBind":
             check("tf_sequence" in mid, row, failures, "tf_sequence missing")
             check(len(mid["dna_candidates"]) == 10, row, failures, "must provide exactly 10 DNA candidates")
+            candidate_ids = [candidate["id"] for candidate in mid["dna_candidates"]]
+            check(candidate_ids == [f"seq_{index:02d}" for index in range(1, 11)], row, failures, "candidate IDs must be seq_01 through seq_10")
+            check(len({candidate["sequence"] for candidate in mid["dna_candidates"]}) == 10, row, failures, "DNA candidate sequences must be unique")
+            check(sorted(hidden["binding_probabilities"]) == sorted(candidate_ids), row, failures, "hidden binding probabilities must cover exactly the candidate IDs")
             check("binding_probabilities" in out, row, failures, "output schema must request binding_probabilities")
         elif task == "RNAFold":
             check(50 <= len(mid["sequence"]) <= 250, row, failures, "RNA length must be 50-250 nt")

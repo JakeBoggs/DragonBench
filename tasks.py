@@ -3,10 +3,13 @@ import hashlib
 from pathlib import Path
 from urllib.parse import quote
 
+from dragonbench.hud_runtime_isolation import install_hud_runtime_isolation
 from dragonbench.io import load_jsonl
 from dragonbench.logging import log_score_event, make_score_event
 from dragonbench.prompts import render_prompt
 from dragonbench.scoring import score_answer
+
+install_hud_runtime_isolation()
 
 try:
     from hud import Environment, Taskset
@@ -92,7 +95,6 @@ def make_result_content(card, result, info):
     elif info.get("visualization_status") == "disabled":
         lines.append(f"Protein visualization disabled: {info['visualization_reason']}")
     return "\n".join(lines)
-
 
 @env.template()
 async def dragonbench_question(question_id: str):

@@ -6,11 +6,14 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from dragonbench.hud_runtime_isolation import install_hud_runtime_isolation
 from dragonbench.io import load_jsonl
 from dragonbench.logging import log_score_event, make_score_event
 from dragonbench.prompts import render_prompt
 from dragonbench.scoring import ScoreResult, score_answer
 from dragonbench.submissions import require_submitted_answer, write_answer_artifact
+
+install_hud_runtime_isolation()
 
 try:
     from hud import Environment, Taskset
@@ -98,7 +101,7 @@ def make_result_content(card, result, info):
     return "\n".join(lines)
 
 
-def submit_answer(question_id: str, answer: dict[str, Any]) -> dict[str, Any]:
+def submit_answer(question_id: str, answer_json: str) -> dict[str, Any]:
     """Store a final DragonBench answer and return the small receipt to place in <answer>."""
     cards = {card["id"]: card for card in load_jsonl(DATASET_PATH)}
     if question_id not in cards:
@@ -107,6 +110,13 @@ def submit_answer(question_id: str, answer: dict[str, Any]) -> dict[str, Any]:
             "error": f"unknown question_id: {question_id}",
             "known_question_ids": sorted(cards),
         }
+    try:
+        answer = json.loads(answer_json)
+    except json.JSONDecodeError as exc:
+        return {"ok": False, "error": f"answer_json must be valid JSON: {exc}"}
+    if not isinstance(answer, dict):
+        return {"ok": False, "error": "answer_json must decode to a JSON object"}
+
     try:
         receipt = write_answer_artifact(question_id, answer)
     except (OSError, TypeError, ValueError) as exc:

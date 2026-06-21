@@ -15,7 +15,7 @@ def render_prompt(card: dict[str, Any]) -> str:
     }
     return (
         "Solve the task. Submit your final JSON answer by calling the submit_answer tool.\n"
-        "The submit_answer tool arguments are question_id and answer. The answer argument must be the JSON object matching expected_output_schema.\n"
+        "The submit_answer tool arguments are question_id and answer_json. answer_json must be a JSON-encoded string whose decoded object matches expected_output_schema.\n"
         "After the tool call succeeds, your final answer must be the last thing in your response.\n"
         "You may reason before the answer. If you revise your answer, only the last answer block will be scored.\n"
         "The block tag must be lowercase exactly as <answer>...</answer>.\n"

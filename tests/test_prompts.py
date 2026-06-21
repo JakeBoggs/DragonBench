@@ -19,6 +19,7 @@ def base_card(task="KomodoProteinFold"):
 def test_prompt_requires_submit_answer_receipt():
     prompt = render_prompt(base_card())
     assert "calling the submit_answer tool" in prompt
+    assert "answer_json" in prompt
     assert "answer_ref" in prompt
     assert "sha256" in prompt
     assert "Direct answers inside <answer> are invalid" in prompt

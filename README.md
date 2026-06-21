@@ -70,7 +70,6 @@ It contains 100 scoreable cards:
 - 20 `RNAFold`
 
 Each scoreable card has a hidden answer with `status: verified`, so every task can be scored automatically. The hidden answers are not included in model prompts.
-Protein-folding cards use 80–100 aa sequences. Fixture generation keeps each complete reference PDB task-answer JSON below 60,000 characters, while HUD transports only the small `submit_answer` receipt.
 
 ## Model Output Contract
 
@@ -82,7 +81,7 @@ HUD prompts require the model to submit the task answer through the `submit_answ
 
 Rules:
 
-- The `submit_answer` tool receives `question_id` and `answer`; `answer` must be the JSON object matching the task schema.
+- The `submit_answer` tool receives `question_id` and `answer_json`; `answer_json` must be a JSON-encoded string whose decoded object matches the task schema.
 - The final answer must be the last thing in the response.
 - The scorer parses the last lowercase `<answer>...</answer>` block as the `submit_answer` receipt.
 - If multiple lowercase answer blocks appear, only the last one is scored.

@@ -119,8 +119,7 @@ Slide 4 - DragonBench benchmark overview
 Slide 5 - Benchmark results
 
 - Title: "Benchmark results"
-- Visual: grouped bar chart comparing the seven Modal full-run models across the five DragonBench categories plus overall score.
-- Use only the listed values; do not reference external files.
+- Visual: grouped bar chart comparing the models across the five DragonBench categories plus overall score.
 - Task labels:
   - "Gene parsing"
   - "Promoter expression"
@@ -129,27 +128,25 @@ Slide 5 - Benchmark results
   - "RNA folding"
   - "Overall"
 - Chart data:
-  - "Opus 4.8": Gene parsing 0.622; Promoter expression 0.113; Protein folding 0.301; TF binding 0.675; RNA folding 0.000; Overall 0.342.
-  - "Gemini 3.1 Pro": Gene parsing 0.633; Promoter expression 0.134; Protein folding 0.000; TF binding 0.366; RNA folding 0.178; Overall 0.262.
-  - "GPT-5.5": Gene parsing 0.292; Promoter expression 0.145; Protein folding 0.084; TF binding 0.604; RNA folding 0.175; Overall 0.260.
-  - "GPT-4o": Gene parsing 0.308; Promoter expression 0.073; Protein folding 0.086; TF binding 0.736; RNA folding 0.000; Overall 0.241.
-  - "GPT-5.4": Gene parsing 0.241; Promoter expression 0.173; Protein folding 0.261; TF binding 0.380; RNA folding 0.000; Overall 0.211.
-  - "GPT-5": Gene parsing 0.259; Promoter expression 0.136; Protein folding 0.115; TF binding 0.435; RNA folding 0.057; Overall 0.200.
-  - "GPT-5.4 mini": Gene parsing 0.138; Promoter expression 0.123; Protein folding 0.130; TF binding 0.511; RNA folding 0.000; Overall 0.180.
+  - "Opus 4.8": Gene parsing 0.622; Promoter expression 0.113; Protein folding 0.301; TF binding 0.653; RNA folding 0.000; Overall 0.338.
+  - "Gemini 3.1 Pro": Gene parsing 0.683; Promoter expression 0.134; Protein folding 0.000; TF binding 0.662; RNA folding 0.178; Overall 0.331.
+  - "GPT-5.5": Gene parsing 0.538; Promoter expression 0.145; Protein folding 0.084; TF binding 0.577; RNA folding 0.200; Overall 0.309.
+  - "GPT-5": Gene parsing 0.259; Promoter expression 0.136; Protein folding 0.122; TF binding 0.521; RNA folding 0.057; Overall 0.219.
+  - "GPT-5.4": Gene parsing 0.241; Promoter expression 0.173; Protein folding 0.261; TF binding 0.379; RNA folding 0.000; Overall 0.211.
+  - "GPT-4o": Gene parsing 0.308; Promoter expression 0.073; Protein folding 0.086; TF binding 0.316; RNA folding 0.000; Overall 0.157.
+  - "GPT-5.4 mini": Gene parsing 0.138; Promoter expression 0.123; Protein folding 0.134; TF binding 0.220; RNA folding 0.000; Overall 0.123.
 - Include badge/panel: "DragonBench Score"
-  - Top overall: "Opus 4.8 - 0.342 mean reward"
+  - Top overall: "Opus 4.8 - 0.338 mean reward"
 - Main message: "DragonBench scores vary sharply by model and task."
 - Goal: show the benchmark leaderboard without extra interpretation.
 
 Slide 6 - Specialized models vs general models
 
 - Title: "Specialized models vs general models"
-- Subtitle: "Specialist confidence vs best general-model protein run"
+- Subtitle: "AlphaFold leads today, but general foundation models are catching up"
 - Layout: side-by-side comparison.
-- Use only the listed values; do not reference external files.
-- Metric note: pLDDT is confidence; C-alpha lDDT is measured accuracy.
 - Left side:
-  - Label: "AlphaFold DB"
+  - Label: "AlphaFold"
   - Visual: polished folded protein ribbon.
   - Metric card:
     - "Mean pLDDT 89.3/100"
@@ -164,18 +161,17 @@ Slide 6 - Specialized models vs general models
     - "Backbone completeness 0.800"
     - "Valid scored structures 16/20"
   - Caption: "Best LLM protein run"
-- Takeaway ribbon: "General models now produce scoreable protein structures."
 - Goal: show the specialist-vs-general comparison with minimal interpretation.
 
 Slide 7 - Analysis
 
 - Title: "Analysis"
-- Subtitle: "General models are improving, but DragonBench still exposes major gaps."
+- Subtitle: "General models are improving, but there is still a long way to go."
 - Use four insight cards:
   - "Structure gap" with protein/fold icon and mini chart: "Best LLM C-alpha lDDT 0.301"
-  - "RNA remains brittle" with RNA hairpin icon and mini chart: "Best score 0.178"
-  - "No uniform winner" with split bar icon: "Task leaders vary"
-  - "Catching-up signal" with checkmark/protein icon: "Opus 4.8 valid on 16/20 protein tasks"
+  - "RNA remains brittle" with RNA hairpin icon and mini chart: "Best score 0.200"
+  - "No uniform winner" with split bar icon: "Five task leaders"
+  - "Catching-up signal" with rising bars icon: "Gemini 0.331 and GPT-5.5 0.309 overall"
 - Goal: show that general models are still behind, while noting early signs of progress.
 
 Slide 8 - So when dragons?

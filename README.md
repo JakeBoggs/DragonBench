@@ -1,5 +1,7 @@
 # DragonBench
 
+![DragonBench banner](docs/presentation/banner.png)
+
 DragonBench is a 100-question genetics benchmark for evaluating models on some of the intermediate genetic engineering tasks required to produce a dragon. The current eval is runnable end-to-end through HUD and Modal with deterministic scoring.
 
 The benchmark has 5 task families with 20 questions each:

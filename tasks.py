@@ -1,9 +1,6 @@
-import asyncio
-import contextlib
 import hashlib
 import json
 import os
-import socket
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -17,7 +14,6 @@ from dragonbench.scoring import score_answer
 install_hud_runtime_isolation()
 
 try:
-    from hud.capabilities import Capability
     from hud import Environment, Taskset
 except ImportError as exc:  # pragma: no cover - exercised only without hud-python installed.
     raise RuntimeError(
@@ -28,58 +24,32 @@ except ImportError as exc:  # pragma: no cover - exercised only without hud-pyth
 DATASET_PATH = Path(__file__).parent / "eval" / "dragonbench_eval_v0.scoreable.jsonl"
 PROTEIN_TASKS = {"KomodoProteinFold"}
 env = Environment(name="dragonbench-eval-v0")
-_submit_answer_server_task = None
+_submitted_answers: dict[str, list[dict[str, Any]]] = {}
 
 
-def _free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
+@env.tool
+def submit_answer(answer_json: str, schema_name: str, question_id: str = ""):
+    """Submit the final DragonBench answer as a JSON object string for grading."""
+    parsed_answer = json.loads(answer_json)
+    if not isinstance(parsed_answer, dict):
+        raise ValueError("answer_json must decode to a JSON object")
+    key = question_id or "__default__"
+    _submitted_answers.setdefault(key, []).append(parsed_answer)
+    return {
+        "status": "submitted",
+        "message": "Answer submitted for grading. Do not call submit_answer again.",
+    }
 
 
-def _port_open(port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.1)
-        return sock.connect_ex(("127.0.0.1", port)) == 0
-
-
-@env.initialize
-async def start_submit_answer_tools():
-    global _submit_answer_server_task
-
-    from fastmcp import FastMCP
-
-    server = FastMCP(name="dragonbench-submit-answer")
-
-    @server.tool
-    def submit_answer(answer_json: str, schema_name: str):
-        """Submit the final DragonBench answer as a JSON object string for grading."""
-        json.loads(answer_json)
-        return {
-            "status": "submitted",
-            "message": "Answer submitted for grading. Do not call submit_answer again.",
-        }
-
-    port = _free_port()
-    _submit_answer_server_task = asyncio.create_task(
-        server.run_async(transport="http", host="127.0.0.1", port=port, show_banner=False)
-    )
-    for _ in range(50):
-        if _port_open(port):
-            break
-        await asyncio.sleep(0.05)
-    env.add_capability(Capability.mcp(name="tools", url=f"http://127.0.0.1:{port}/mcp"))
-
-
-@env.shutdown
-async def stop_submit_answer_tools():
-    global _submit_answer_server_task
-    if _submit_answer_server_task is None:
-        return
-    _submit_answer_server_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await _submit_answer_server_task
-    _submit_answer_server_task = None
+def pop_submitted_answer(question_id: str):
+    for key in (question_id, "__default__"):
+        answers = _submitted_answers.get(key)
+        if answers:
+            answer = answers.pop(0)
+            if not answers:
+                _submitted_answers.pop(key, None)
+            return answer
+    return None
 
 
 def answer_digest(answer):
@@ -156,6 +126,7 @@ HUD submission rule:
 - You must submit the final answer by calling the submit_answer tool exactly once.
 - The submit_answer answer_json argument must be exactly one JSON object string that matches the required task answer schema.
 - The submit_answer schema_name argument must be a short label for the answer schema, such as introns, tissue_ranking, protein_structure, binding_probabilities, or rna_structure.
+- The submit_answer question_id argument must be exactly "{card["id"]}".
 - Do not put the final answer in normal assistant text; only the tool submission is graded."""
 
 @env.template()
@@ -163,6 +134,9 @@ async def dragonbench_question(question_id: str):
     cards = {card["id"]: card for card in load_jsonl(DATASET_PATH)}
     card = cards[question_id]
     answer = yield render_hud_prompt(card)
+    submitted_answer = pop_submitted_answer(card["id"])
+    if submitted_answer is not None:
+        answer = submitted_answer
     result = score_answer(card, answer)
     log_score_event(card, result, answer, emit_stdout=True, include_answer_preview=False)
     event = make_score_event(card, result, include_answer_preview=False)

@@ -102,7 +102,7 @@ dragonbench/scoring.py
 
 Current scoring functions:
 
-- Gene parsing: spliced-sequence Levenshtein similarity when the input sequence is available, plus intron interval F1, boundary score, and count accuracy.
+- Gene parsing: `max(0, 1 - Levenshtein(predicted spliced, true spliced) / (original length - true spliced length))`. Intron interval F1, boundary score, and count accuracy are diagnostics.
 - Promoter expression: chance-clipped Spearman rank correlation across nine tissues. Incomplete or duplicate rankings score zero; top-1 accuracy and NDCG are diagnostics.
 - Protein folding: coordinate coverage multiplied by local C-alpha distance-matrix similarity, with all-atom PDB/mmCIF validity and backbone completeness folded into the local structure score. Low residue coverage caps the reward.
 - TF binding: AUROC, AUPRC, ranking accuracy, and Brier score for probability tasks; interval F1 for interval tasks.

@@ -72,7 +72,9 @@ Include a range of sequence lengths across the 1–5 kb range.
 
 ## Scoring
 
-compare the ground truth spliced sequence and the predicted spliced sequence using the levenshtein distance
+Compare the ground-truth and predicted spliced sequences using:
+
+`max(0, 1 - Levenshtein distance / (original sequence length - ground-truth spliced sequence length))`
 
 ---
 

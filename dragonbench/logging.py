@@ -77,7 +77,7 @@ def explain_scoring(card: dict[str, Any], result: ScoreResult) -> str:
         )
     if task == "AnoleGeneParse":
         return (
-            "Reward is the normalized Levenshtein similarity between true and predicted spliced sequences. "
+            "Reward = max(0, 1 - spliced-sequence Levenshtein distance / ground-truth intron length). "
             f"Values: spliced_similarity={s.get('spliced_sequence_levenshtein_similarity', 0):.3f}, "
             f"intron_F1={s.get('intron_interval_f1_at_iou_0_8', 0):.3f}, "
             f"boundary={s.get('intron_boundary_score', 0):.3f}, "

@@ -111,10 +111,19 @@ def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any], seq
     boundary = interval_boundary_score(pred.get("introns", []), expected.get("introns", []))
     count_score = count_accuracy(len(pred.get("introns", [])), len(expected.get("introns", [])))
     splice_score = None
+    splice_distance = None
+    splice_normalization_length = None
     if isinstance(sequence, str) and sequence:
         pred_spliced = splice_sequence(sequence, pred.get("introns", []))
         true_spliced = expected.get("spliced_sequence") or splice_sequence(sequence, expected.get("introns", []))
-        splice_score = levenshtein_similarity(pred_spliced, true_spliced)
+        splice_distance = levenshtein_distance(pred_spliced, true_spliced)
+        splice_normalization_length = len(sequence) - len(true_spliced)
+        splice_score = intron_levenshtein_similarity(
+            pred_spliced,
+            true_spliced,
+            original_length=len(sequence),
+            distance=splice_distance,
+        )
     reward = splice_score if splice_score is not None else 0.75 * intron["f1"] + 0.15 * boundary + 0.10 * count_score
     subscores = {
         "spliced_sequence_levenshtein_similarity": splice_score if splice_score is not None else 0.0,
@@ -124,11 +133,19 @@ def score_gene_parse_introns(pred: dict[str, Any], expected: dict[str, Any], seq
         "intron_boundary_score": boundary,
         "intron_count_accuracy": count_score,
     }
+    info = {
+        "matched_introns": intron["matched"],
+        "n_pred": len(pred.get("introns", [])),
+        "n_true": len(expected.get("introns", [])),
+    }
+    if splice_distance is not None:
+        info["spliced_sequence_levenshtein_distance"] = splice_distance
+        info["spliced_sequence_normalization_length"] = splice_normalization_length
     return ScoreResult(
         clamp01(reward),
         "scored",
         subscores,
-        {"matched_introns": intron["matched"], "n_pred": len(pred.get("introns", [])), "n_true": len(expected.get("introns", []))}
+        info,
     )
 
 
@@ -482,11 +499,18 @@ def splice_sequence(sequence: str, introns: list[Any]) -> str:
     return "".join(pieces)
 
 
-def levenshtein_similarity(a: str, b: str) -> float:
-    if a == b:
-        return 1.0
-    denom = max(len(a), len(b), 1)
-    return clamp01(1.0 - levenshtein_distance(a, b) / denom)
+def intron_levenshtein_similarity(
+    predicted_spliced: str,
+    ground_truth_spliced: str,
+    original_length: int,
+    distance: int | None = None,
+) -> float:
+    if distance is None:
+        distance = levenshtein_distance(predicted_spliced, ground_truth_spliced)
+    removed_length = original_length - len(ground_truth_spliced)
+    if removed_length <= 0:
+        return 1.0 if distance == 0 else 0.0
+    return max(0.0, 1.0 - distance / removed_length)
 
 
 def levenshtein_distance(a: str, b: str) -> int:

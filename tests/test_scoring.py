@@ -30,6 +30,50 @@ def test_anole_gene_parse_uses_spliced_sequence_levenshtein():
     assert result.subscores["spliced_sequence_levenshtein_similarity"] == 1.0
 
 
+def test_anole_gene_parse_normalizes_levenshtein_by_removed_intron_length():
+    sequence = "AAA" + "CCCC" + "GTGGAG" + "TTTT" + "GGG"
+    card = {
+        "task": "AnoleGeneParse",
+        "question": {"model_input": {"sequence": sequence}},
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "introns": [{"start": 7, "end": 13}],
+                "spliced_sequence": "AAACCCCTTTTGGG",
+            },
+        },
+    }
+
+    result = score_answer(card, {"introns": [{"start": 7, "end": 12}]})
+
+    assert result.status == "scored"
+    assert result.reward == 5 / 6
+    assert result.info["spliced_sequence_levenshtein_distance"] == 1
+    assert result.info["spliced_sequence_normalization_length"] == 6
+
+
+def test_anole_gene_parse_unspliced_prediction_scores_zero():
+    sequence = "AAA" + "CCCC" + "GTGGAG" + "TTTT" + "GGG"
+    card = {
+        "task": "AnoleGeneParse",
+        "question": {"model_input": {"sequence": sequence}},
+        "hidden_answer": {
+            "status": "verified",
+            "answer": {
+                "introns": [{"start": 7, "end": 13}],
+                "spliced_sequence": "AAACCCCTTTTGGG",
+            },
+        },
+    }
+
+    result = score_answer(card, {"introns": []})
+
+    assert result.status == "scored"
+    assert result.reward == 0.0
+    assert result.info["spliced_sequence_levenshtein_distance"] == 6
+    assert result.info["spliced_sequence_normalization_length"] == 6
+
+
 def test_anole_promoter_expression_accepts_tissue_ranking():
     card = {
         "task": "AnolePromoterExpression",

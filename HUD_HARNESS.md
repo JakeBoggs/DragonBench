@@ -95,7 +95,7 @@ The scorer lives in `dragonbench/scoring.py`.
 
 Task scoring:
 
-- `AnoleGeneParse`: intron interval F1 at IoU >= 0.8, boundary score, intron count accuracy
+- `AnoleGeneParse`: Levenshtein similarity normalized by ground-truth intron length; interval F1, boundary score, and intron count accuracy are diagnostics
 - `AnolePromoterExpression`: NDCG over tissue ranking, top-1 tissue accuracy, Spearman rank correlation
 - `KomodoProteinFold`: coordinate coverage multiplied by local all-atom PDB/mmCIF validity and C-alpha distance-matrix similarity. Low residue coverage caps the reward.
 - `DragonTFBind`: interval F1 at IoU >= 0.5, center-distance score, confidence presence

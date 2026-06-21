@@ -12,6 +12,8 @@
 | GPT-5 | `9c2a4fe7-68a4-42b4-a9da-06db80b501b9` |
 | GPT-4o | `0f5e7425-9d0d-496e-b1cd-9aa4e1fa6c77` |
 
+The original jobs are not exported as separate old-data CSVs in this pack. They are only the baseline rows that remain where no newer rerun exists.
+
 ## Latest DragonTFBind rerun
 
 | Model | Job ID |
@@ -26,12 +28,12 @@
 
 ## Error reruns
 
-| Pass | Model | Job ID | Current status at packaging |
+| Pass | Model | Job ID | Status at regeneration |
 |---|---|---|---|
-| First retry | Gemini 3.1 Pro | `3b6fb416-2a59-4e0d-84f6-b2b8b810475e` | 1 completed, 33 errors |
-| First retry | GPT-5.5 | `b795fe7a-4d40-4948-989a-9577dfd331e0` | 13 completed, 1 error |
-| First retry | GPT-5.4 mini | `418eac38-d4ee-4916-8854-270e844626d6` | completed |
-| First retry | GPT-4o | `cb1307c0-5117-43ab-81e2-179910f90711` | completed |
-| First retry | GPT-5 | `6326a0df-0293-44ec-bd34-4b3cd4f39774` | completed |
-| Second retry | Gemini 3.1 Pro | `884f6899-ad6f-4ea6-a8b3-948528d3de4f` | active at packaging: 3 running rows |
-| Second retry | GPT-5.5 | `5dc63e61-0eae-452b-b1b0-5dc74e341f0d` | active at packaging: 1 running row |
+| first_retry | GPT-4o | `cb1307c0-5117-43ab-81e2-179910f90711` | 1 completed |
+| first_retry | GPT-5 | `6326a0df-0293-44ec-bd34-4b3cd4f39774` | 1 completed |
+| first_retry | GPT-5.4 mini | `418eac38-d4ee-4916-8854-270e844626d6` | 1 completed |
+| first_retry | GPT-5.5 | `b795fe7a-4d40-4948-989a-9577dfd331e0` | 13 completed, 1 error |
+| first_retry | Gemini 3.1 Pro | `3b6fb416-2a59-4e0d-84f6-b2b8b810475e` | 1 completed, 33 error |
+| second_retry | GPT-5.5 | `5dc63e61-0eae-452b-b1b0-5dc74e341f0d` | 1 completed |
+| second_retry | Gemini 3.1 Pro | `884f6899-ad6f-4ea6-a8b3-948528d3de4f` | 3 running |

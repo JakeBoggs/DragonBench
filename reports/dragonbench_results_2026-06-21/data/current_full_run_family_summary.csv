@@ -1,0 +1,36 @@
+model,model_label,task,n,mean_reward,completed,errors,nonzero,replaced_rows
+claude-opus-4-8,Opus 4.8,AnoleGeneParse,20,0.6218475301863416,20,0,16,0
+claude-opus-4-8,Opus 4.8,AnolePromoterExpression,20,0.11249999999999998,20,0,8,0
+claude-opus-4-8,Opus 4.8,DragonTFBind,20,0.6531043813904882,20,0,18,20
+claude-opus-4-8,Opus 4.8,KomodoProteinFold,20,0.3007927683874334,20,0,16,0
+claude-opus-4-8,Opus 4.8,RNAFold,20,0.0,20,0,0,0
+gemini-3.1-pro-preview,Gemini 3.1 Pro,AnoleGeneParse,20,0.6827679576383974,20,0,17,1
+gemini-3.1-pro-preview,Gemini 3.1 Pro,AnolePromoterExpression,20,0.13416666666666663,20,0,10,0
+gemini-3.1-pro-preview,Gemini 3.1 Pro,DragonTFBind,20,0.6616259318663447,19,1,18,20
+gemini-3.1-pro-preview,Gemini 3.1 Pro,KomodoProteinFold,20,0.0,0,20,0,20
+gemini-3.1-pro-preview,Gemini 3.1 Pro,RNAFold,20,0.17800153931925605,16,4,6,4
+gpt-4o,GPT-4o,AnoleGeneParse,20,0.3075116202424084,20,0,13,0
+gpt-4o,GPT-4o,AnolePromoterExpression,20,0.07333333333333332,20,0,6,0
+gpt-4o,GPT-4o,DragonTFBind,20,0.3162120301302466,20,0,13,20
+gpt-4o,GPT-4o,KomodoProteinFold,20,0.08620065255888501,20,0,17,1
+gpt-4o,GPT-4o,RNAFold,20,0.0,20,0,0,0
+gpt-5,GPT-5,AnoleGeneParse,20,0.25874242359658567,20,0,10,0
+gpt-5,GPT-5,AnolePromoterExpression,20,0.1358333333333333,20,0,11,0
+gpt-5,GPT-5,DragonTFBind,20,0.5212864070736354,20,0,15,20
+gpt-5,GPT-5,KomodoProteinFold,20,0.12164295955821061,20,0,20,1
+gpt-5,GPT-5,RNAFold,20,0.05663109756097562,20,0,3,0
+gpt-5.4,GPT-5.4,AnoleGeneParse,20,0.24071602321924312,20,0,12,0
+gpt-5.4,GPT-5.4,AnolePromoterExpression,20,0.17249999999999996,20,0,8,0
+gpt-5.4,GPT-5.4,DragonTFBind,20,0.3787547573659135,20,0,15,20
+gpt-5.4,GPT-5.4,KomodoProteinFold,20,0.2612303167708137,20,0,20,0
+gpt-5.4,GPT-5.4,RNAFold,20,0.0,20,0,0,0
+gpt-5.4-mini,GPT-5.4 mini,AnoleGeneParse,20,0.13755836965690102,20,0,9,0
+gpt-5.4-mini,GPT-5.4 mini,AnolePromoterExpression,20,0.12333333333333332,20,0,10,0
+gpt-5.4-mini,GPT-5.4 mini,DragonTFBind,20,0.2203673328823313,20,0,14,20
+gpt-5.4-mini,GPT-5.4 mini,KomodoProteinFold,20,0.13412012329749415,20,0,20,1
+gpt-5.4-mini,GPT-5.4 mini,RNAFold,20,0.0,20,0,0,0
+gpt-5.5,GPT-5.5,AnoleGeneParse,20,0.5378634852336014,20,0,15,10
+gpt-5.5,GPT-5.5,AnolePromoterExpression,20,0.14499999999999996,20,0,9,0
+gpt-5.5,GPT-5.5,DragonTFBind,20,0.5766463837762943,20,0,16,20
+gpt-5.5,GPT-5.5,KomodoProteinFold,20,0.08389771233591323,20,0,16,0
+gpt-5.5,GPT-5.5,RNAFold,20,0.20007249424798737,20,0,12,4

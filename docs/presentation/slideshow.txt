@@ -183,7 +183,6 @@ Slide 8 - So when dragons?
   - "Wyvern-style dragon" - median 2057, 80% interval 2050-2068; viable winged dragon-like vertebrate.
   - "Classic fantasy dragon" - median 2071, 80% interval 2061-2087; large winged dragon with iconic morphology and fire-like display.
 - Show the three milestones as nested ambition levels: first drake, then wyvern, then classic dragon.
-- Add a side callout: "Key unlock: vertebrate morphogenesis and body-plan control."
 - X-axis: "Year"
 - Y-axis: omit if using a timeline; if using a chart, label the lanes by target rather than plotting a generic capability score.
 - Illustration: progression from egg to small drake silhouette to wyvern silhouette to distant classic dragon silhouette; keep it light, scientific, and mythic.

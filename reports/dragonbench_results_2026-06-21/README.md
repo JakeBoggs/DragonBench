@@ -63,11 +63,11 @@ Second retry rows are incorporated in `data/rerun_attempts.csv`. GPT-5.5's secon
 - `plots/current_completion_status.png`
 - `plots/rerun_attempt_status.png`
 
-## Protein Fold Render Images
+## Visual Highlights
 
 The organized render folder is `protein_fold_renders/`. The key file is `protein_fold_renders/IMAGE_INDEX.md`, which maps each comparison to exact image filenames. The protein score CSVs in `data/` now use the current row-level replacement dataset.
 
-The high-resolution render folder is `protein_fold_renders_high_res/`. A ranked markdown shortlist of the most useful good-vs-bad protein fold examples is `PROTEIN_FOLDING_INTERESTING_COMPARISONS.md`.
+The combined visual shortlist is `VISUAL_HIGHLIGHTS.md`. It includes the highest-signal protein fold triptychs and focused intron text highlights.
 
 ## Notes
 

@@ -1,9 +1,11 @@
 **
 
-!Dockerfile.hud
+!infra/
+!infra/Dockerfile.hud
 !requirements.txt
 !tasks.py
 !dragonbench/
 !dragonbench/**
-!eval/
-!eval/dragonbench_eval_v0.scoreable.jsonl
+!data/
+!data/eval/
+!data/eval/dragonbench_eval_v0.scoreable.jsonl

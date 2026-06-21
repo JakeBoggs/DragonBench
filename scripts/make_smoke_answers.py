@@ -7,8 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dragonbench.io import load_jsonl
 
 
-DATASET = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
-OUT = Path("eval/smoke_answers.jsonl")
+DATASET = Path("data/eval/dragonbench_eval_v0.scoreable.jsonl")
+OUT = Path("data/generated/smoke_answers.jsonl")
 
 
 def protein_answer_from_hidden(card):

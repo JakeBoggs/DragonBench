@@ -27,7 +27,7 @@ For full sweeps, run the eval driver on Modal CPU and route model calls through
 HUD Gateway:
 
 ```bash
-modal run --detach modal_hud_eval.py \
+modal run --detach runners/modal_hud_eval.py \
   --models claude-opus-4-8,gemini-3.1-pro-preview,gpt-5.5,gpt-5.4,gpt-5.4-mini,gpt-5,gpt-4o \
   --all \
   --max-concurrent 10 \
@@ -43,7 +43,7 @@ jobs and traces for the resulting `tasks.py` runs.
 Use `--wait` for small smoke tests:
 
 ```bash
-modal run modal_hud_eval.py \
+modal run runners/modal_hud_eval.py \
   --models gpt-5.4-mini \
   --task-ids 60 \
   --max-concurrent 1 \
@@ -73,7 +73,7 @@ The deployed taskset can also be run with `hud eval <taskset> <model> --remote`,
 but this is no longer the preferred full-eval path. In larger sweeps, hosted
 remote rollouts have shown long provider/platform queue times, detached-session
 rollout errors, and provider capacity failures. Use remote runs for deployment
-smoke tests; use `modal_hud_eval.py` for full benchmark sweeps.
+smoke tests; use `runners/modal_hud_eval.py` for full benchmark sweeps.
 
 Each task family has a dedicated prompt with task-specific input and output
 instructions. Benchmark internals and scoring details are omitted. Models
@@ -82,7 +82,7 @@ Markdown fences, or surrounding prose.
 
 ## Current Eval Status
 
-The file `eval/dragonbench_eval_v0.scoreable.jsonl` has 100 scoreable cards:
+The file `data/eval/dragonbench_eval_v0.scoreable.jsonl` has 100 scoreable cards:
 
 - 20 `AnoleGeneParse`
 - 20 `AnolePromoterExpression`
@@ -96,7 +96,7 @@ All cards have `hidden_answer.status: verified` and produce real rewards.
 
 ```bash
 python3 scripts/make_smoke_answers.py
-python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl
+python3 scripts/score_answers.py --answers data/generated/smoke_answers.jsonl
 ```
 
 The smoke file answers every task from the hidden answer and should score near `1.0`.
@@ -124,7 +124,7 @@ Controls:
 ```bash
 DRAGONBENCH_SCORE_LOG=0 hud eval tasks.py claude --max-steps 1 --task-ids 20 -y
 DRAGONBENCH_SCORE_LOG_PATH=logs/my_run.jsonl hud eval tasks.py claude --max-steps 1 --task-ids 20 -y
-python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl --no-log
+python3 scripts/score_answers.py --answers data/generated/smoke_answers.jsonl --no-log
 python3 scripts/score_answers.py --answers model_answers.jsonl --log-answer-preview
 ```
 
@@ -144,7 +144,7 @@ The scoring functions are deterministic, JSON-only, and avoid LLM judging.
 
 ## Protein 3D Visualization
 
-Per `data-spec.md`, `KomodoProteinFold` asks for a complete all-atom monomer structure:
+Per `docs/data-spec.md`, `KomodoProteinFold` asks for a complete all-atom monomer structure:
 
 ```json
 {
@@ -163,7 +163,7 @@ or:
 Build a 3D report:
 
 ```bash
-python3 scripts/build_protein_3d_report.py --answers eval/smoke_answers.jsonl --out reports/protein_folding_3d.html
+python3 scripts/build_protein_3d_report.py --answers data/generated/smoke_answers.jsonl --out reports/protein_folding_3d.html
 ```
 
 The single-model report renders the ground-truth structure in green, the submitted all-atom PDB/mmCIF model in orange, and an overlay. Model answers must use the canonical PDB/mmCIF JSON shape.
@@ -186,8 +186,8 @@ The comparison report shows three 3Dmol panels: model A vs ground truth, model B
 ```bash
 python3 scripts/make_demo_model_b_answers.py
 python3 scripts/build_protein_3d_report.py \
-  --answers-a eval/smoke_answers.jsonl \
-  --answers-b eval/demo_model_b_answers.jsonl \
+  --answers-a data/generated/smoke_answers.jsonl \
+  --answers-b data/generated/demo_model_b_answers.jsonl \
   --model-a-name SmokeOracle \
   --model-b-name PerturbedDemo \
   --out reports/protein_folding_compare.html
@@ -209,7 +209,7 @@ python3 scripts/build_scoreable_eval.py
 python3 scripts/make_smoke_answers.py
 ```
 
-The visualization path and scoring path both consume the all-atom `data-spec.md` output shape. The scorer extracts C-alpha coordinates from the submitted PDB/mmCIF structure for the current distance-matrix metric.
+The visualization path and scoring path both consume the all-atom `docs/data-spec.md` output shape. The scorer extracts C-alpha coordinates from the submitted PDB/mmCIF structure for the current distance-matrix metric.
 
 ### HUD Visualization Links
 

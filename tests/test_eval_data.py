@@ -4,7 +4,7 @@ from pathlib import Path
 from dragonbench.scoring import score_answer
 
 
-EVAL_PATH = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
+EVAL_PATH = Path("data/eval/dragonbench_eval_v0.scoreable.jsonl")
 
 
 def test_tf_binding_candidate_ids_do_not_encode_binding_rank():

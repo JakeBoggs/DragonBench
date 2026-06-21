@@ -166,7 +166,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gff", default="data/source/anole_refseq/GCF_000090745.1_AnoCar2.0_genomic.gff.gz")
     parser.add_argument("--fasta", default="data/source/anole_refseq/GCF_000090745.1_AnoCar2.0_genomic.fna.gz")
-    parser.add_argument("--eval", default="eval/dragonbench_eval_v0.scoreable.jsonl")
+    parser.add_argument("--eval", default="data/eval/dragonbench_eval_v0.scoreable.jsonl")
     parser.add_argument("--out", default="data/source/anole_refseq/gene_parse_training_records.jsonl")
     parser.add_argument("--limit", type=int, default=240)
     parser.add_argument("--candidate-limit", type=int, default=2000)

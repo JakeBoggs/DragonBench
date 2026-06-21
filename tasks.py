@@ -20,7 +20,7 @@ except ImportError as exc:  # pragma: no cover - exercised only without hud-pyth
     ) from exc
 
 
-DATASET_PATH = Path(__file__).parent / "eval" / "dragonbench_eval_v0.scoreable.jsonl"
+DATASET_PATH = Path(__file__).parent / "data" / "eval" / "dragonbench_eval_v0.scoreable.jsonl"
 PROTEIN_TASKS = {"KomodoProteinFold"}
 env = Environment(name="dragonbench-eval-v0")
 

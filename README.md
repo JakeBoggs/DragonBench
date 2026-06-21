@@ -1,6 +1,6 @@
 # DragonBench
 
-DragonBench is a 100-question genetics benchmark for evaluating models on some of the intermediate genetic engineering tasks required to produce a dragon. The current eval is runnable end-to-end through HUD with deterministic scoring.
+DragonBench is a 100-question genetics benchmark for evaluating models on some of the intermediate genetic engineering tasks required to produce a dragon. The current eval is runnable end-to-end through HUD and Modal with deterministic scoring.
 
 The benchmark has 5 task families with 20 questions each:
 
@@ -10,7 +10,7 @@ The benchmark has 5 task families with 20 questions each:
 - `DragonTFBind`: predict transcription-factor binding probabilities.
 - `RNAFold`: predict RNA secondary structure.
 
-See `data-spec.md` for the current data contract.
+See [docs/data-spec.md](docs/data-spec.md) for the current data contract.
 
 ## Repository Layout
 
@@ -19,11 +19,19 @@ dragonbench/
   prompts.py                       # HUD/model prompt rendering
   scoring.py                       # deterministic scorers
   logging.py                       # local/HUD score-event logs
-data/source/                       # source-backed benchmark fixtures
-eval/
-  dragonbench_eval_v0.scoreable.jsonl
+data/
+  source/                          # source-backed benchmark fixtures
+  eval/
+    dragonbench_eval_v0.scoreable.jsonl
+  generated/                       # ignored smoke/demo answer JSONL
+  training/                        # training/eval-protocol datasets
 schemas/
   eval_question.schema.json
+docs/
+  data-spec.md
+  HUD_HARNESS.md
+  archive/MODAL_RL.md             # historical promoter SFT/RL plan
+  presentation/slideshow.txt
 scripts/
   build_promoter_expression_fixture.py
   build_komodo_protein_fixture.py
@@ -32,9 +40,12 @@ scripts/
   make_demo_model_b_answers.py
   score_answers.py
   build_protein_3d_report.py
+runners/
+  modal_hud_eval.py                # preferred cloud eval runner on Modal CPU
+  modal_intron_rl.py               # Modal Training Gym intron RL launcher
+infra/
+  Dockerfile.hud                   # containerized HUD environment
 tasks.py                           # HUD taskset entrypoint
-modal_hud_eval.py                  # preferred cloud eval runner on Modal CPU
-Dockerfile.hud                     # containerized HUD environment
 ```
 
 ## Setup
@@ -63,7 +74,7 @@ modal secret create dragonbench-hud-eval --from-dotenv "$HOME/.hud/.env" --force
 The runnable eval is:
 
 ```text
-eval/dragonbench_eval_v0.scoreable.jsonl
+data/eval/dragonbench_eval_v0.scoreable.jsonl
 ```
 
 It contains 100 scoreable tasks:
@@ -122,7 +133,7 @@ Generate oracle-style smoke answers from hidden answers:
 
 ```bash
 python3 scripts/make_smoke_answers.py
-python3 scripts/score_answers.py --answers eval/smoke_answers.jsonl
+python3 scripts/score_answers.py --answers data/generated/smoke_answers.jsonl
 ```
 
 The smoke answers should score near `1.0`.
@@ -131,7 +142,7 @@ Generate a deterministic perturbed second model for visualization demos:
 
 ```bash
 python3 scripts/make_demo_model_b_answers.py
-python3 scripts/score_answers.py --answers eval/demo_model_b_answers.jsonl
+python3 scripts/score_answers.py --answers data/generated/demo_model_b_answers.jsonl
 ```
 
 ## HUD Eval
@@ -141,7 +152,7 @@ calls through HUD Gateway. This keeps orchestration and grading off your laptop,
 while avoiding HUD hosted-rollout queueing for each task.
 
 ```bash
-modal run --detach modal_hud_eval.py \
+modal run --detach runners/modal_hud_eval.py \
   --models claude-opus-4-8,gemini-3.1-pro-preview,gpt-5.5,gpt-5.4,gpt-5.4-mini,gpt-5,gpt-4o \
   --all \
   --max-concurrent 10 \
@@ -152,7 +163,7 @@ modal run --detach modal_hud_eval.py \
 Smoke a single task and wait for the result:
 
 ```bash
-modal run modal_hud_eval.py \
+modal run runners/modal_hud_eval.py \
   --models gpt-5.4-mini \
   --task-ids 60 \
   --max-concurrent 1 \
@@ -186,7 +197,7 @@ hud eval tasks.py claude --task-ids 20 -y
 HUD platform tasksets and `--remote` are useful for smoke testing the deployed
 environment, but they are not the preferred path for full benchmark sweeps. In
 practice, remote rollouts can queue for a long time per provider and may hit
-platform-side rollout errors. For full runs, prefer `modal_hud_eval.py`.
+platform-side rollout errors. For full runs, prefer `runners/modal_hud_eval.py`.
 
 The HUD task entrypoint is:
 
@@ -210,29 +221,25 @@ For each task, the environment yields a structured grade payload:
 
 Protein tasks may also include visualization links in `info` when configured.
 
-## Modal SFT/RL
+## Modal Training
 
-The post-training scaffold is documented in [docs/MODAL_RL.md](docs/MODAL_RL.md).
-Use the small-model smoke paths for iteration:
-
-```bash
-python scripts/build_promoter_sft_dataset.py --out-dir runs/promoter_sft_dataset
-python scripts/build_promoter_rl_dataset.py --out-dir runs/promoter_rl_dataset
-modal run modal_promoter_sft.py --smoke --n-train 1 --n-eval 1 --max-steps 1
-modal run modal_promoter_rl.py --smoke --no-eval-base --n-train 1 --n-eval 1 --num-rollout 1 --rollout-batch-size 1 --n-samples-per-prompt 1
-```
-
-Use SFT first, then GRPO for the 35B target:
+The current checked-in Modal Training Gym launcher is the intron RL smoke path:
 
 ```bash
-modal run modal_promoter_sft.py --n-train 20 --n-eval 20 --num-train-epochs 1
-modal run modal_promoter_rl.py --n-train 20 --n-eval 20
+modal run runners/modal_intron_rl.py \
+  --smoke \
+  --no-eval-base \
+  --no-serve-trained \
+  --n-train 2 \
+  --n-eval 2 \
+  --num-rollout 2 \
+  --rollout-batch-size 1 \
+  --n-samples-per-prompt 2
 ```
 
-The smoke SFT path uses `Qwen/Qwen3-0.6B` on one A10G. The smoke RL path uses
-`Qwen/Qwen3-1.7B` on one A100 to avoid requiring Modal RDMA. The 20-row 35B runs
-are still only plumbing checks until the promoter-expression training set is
-expanded and the eval audit is complete.
+The old promoter SFT/RL plan referenced launchers that are no longer checked in.
+It is kept as archived planning context in
+[docs/archive/MODAL_RL.md](docs/archive/MODAL_RL.md), not as the current runbook.
 
 ## Fireworks RFT
 
@@ -254,7 +261,7 @@ Build a single-model report:
 
 ```bash
 python3 scripts/build_protein_3d_report.py \
-  --answers eval/smoke_answers.jsonl \
+  --answers data/generated/smoke_answers.jsonl \
   --out reports/protein_folding_3d.html
 ```
 
@@ -262,8 +269,8 @@ Build a two-model comparison report:
 
 ```bash
 python3 scripts/build_protein_3d_report.py \
-  --answers-a eval/smoke_answers.jsonl \
-  --answers-b eval/demo_model_b_answers.jsonl \
+  --answers-a data/generated/smoke_answers.jsonl \
+  --answers-b data/generated/demo_model_b_answers.jsonl \
   --model-a-name SmokeOracle \
   --model-b-name PerturbedDemo \
   --out reports/protein_folding_compare.html
@@ -400,7 +407,7 @@ pytest -q tests/test_scoring.py
 Check generated Python:
 
 ```bash
-python3 -m py_compile tasks.py scripts/build_protein_3d_report.py
+python3 -m py_compile tasks.py scripts/build_protein_3d_report.py runners/modal_hud_eval.py runners/modal_intron_rl.py
 ```
 
 Check generated report JavaScript:

@@ -20,8 +20,8 @@ def load_jsonl(path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check DragonBench eval records against data-spec.md structural/source requirements.")
-    parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
+    parser = argparse.ArgumentParser(description="Check DragonBench eval records against docs/data-spec.md structural/source requirements.")
+    parser.add_argument("--dataset", default="data/eval/dragonbench_eval_v0.scoreable.jsonl")
     args = parser.parse_args()
 
     rows = load_jsonl(args.dataset)

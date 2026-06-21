@@ -18,7 +18,7 @@ from dragonbench.rl.intron_reward import parse_intron_response, parse_label
 from dragonbench.scoring import score_gene_parse_introns
 
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "training" / "fireworks_rft" / "intron"
 TRAIN_DATASET = DATA_DIR / "rl_non_eval" / "train.jsonl"
 
 

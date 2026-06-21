@@ -12,7 +12,7 @@ from dragonbench.scoring import score_answer
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Score DragonBench answer JSONL locally.")
-    parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
+    parser.add_argument("--dataset", default="data/eval/dragonbench_eval_v0.scoreable.jsonl")
     parser.add_argument("--answers", required=True, help="JSONL with fields id and answer.")
     parser.add_argument("--out", default=None)
     parser.add_argument("--no-log", action="store_true", help="Do not append score events to logs/score_events.jsonl.")

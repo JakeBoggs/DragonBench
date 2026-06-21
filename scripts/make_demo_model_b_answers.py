@@ -7,9 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dragonbench.io import dump_jsonl, load_jsonl
 
 
-DATASET = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
-SMOKE = Path("eval/smoke_answers.jsonl")
-OUT = Path("eval/demo_model_b_answers.jsonl")
+DATASET = Path("data/eval/dragonbench_eval_v0.scoreable.jsonl")
+SMOKE = Path("data/generated/smoke_answers.jsonl")
+OUT = Path("data/generated/demo_model_b_answers.jsonl")
 
 
 def main() -> None:

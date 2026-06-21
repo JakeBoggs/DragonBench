@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 
-OUT = Path("eval/dragonbench_eval_v0.scoreable.jsonl")
+OUT = Path("data/eval/dragonbench_eval_v0.scoreable.jsonl")
 ANOLE_GENE_PARSE_FIXTURE = Path("data/source/anole_refseq/gene_parse_records.jsonl")
 KOMODO_ALPHAFOLD_FIXTURE = Path("data/source/komodo_alphafold/komodo_alphafold_structures.jsonl")
 RFAM_RNA_FIXTURE = Path("data/source/rfam/rna_folding_records.jsonl")

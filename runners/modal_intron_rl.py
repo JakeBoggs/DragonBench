@@ -2,7 +2,7 @@
 
 Run from Python 3.12:
 
-    modal run modal_intron_rl.py --smoke --no-eval-base --no-serve-trained --n-train 2 --n-eval 2 --num-rollout 2 --rollout-batch-size 1 --n-samples-per-prompt 2
+    modal run runners/modal_intron_rl.py --smoke --no-eval-base --no-serve-trained --n-train 2 --n-eval 2 --num-rollout 2 --rollout-batch-size 1 --n-samples-per-prompt 2
 
 The smoke path uses Qwen3-1.7B on one A100 to avoid RDMA requirements.
 """

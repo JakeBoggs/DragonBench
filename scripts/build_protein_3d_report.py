@@ -598,7 +598,7 @@ HTML_TEMPLATE = """<!doctype html>
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a 3Dmol protein folding report from DragonBench answer JSONL.")
-    parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
+    parser.add_argument("--dataset", default="data/eval/dragonbench_eval_v0.scoreable.jsonl")
     parser.add_argument("--answers", help="Single-model answer JSONL. Alias for --answers-a.")
     parser.add_argument("--answers-a", help="Model A answer JSONL.")
     parser.add_argument("--answers-b", default=None, help="Optional Model B answer JSONL for comparison mode.")

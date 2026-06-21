@@ -4,8 +4,8 @@ This avoids HUD's hosted rollout scheduler while still keeping the eval driver
 off the laptop. Model calls route through HUD Gateway via HUD_API_KEY.
 
 Examples:
-    modal run modal_hud_eval.py --models gpt-5.4-mini --task-ids 60 --wait
-    modal run modal_hud_eval.py --models gpt-5.4,gpt-4o --all --max-concurrent 10
+    modal run runners/modal_hud_eval.py --models gpt-5.4-mini --task-ids 60 --wait
+    modal run runners/modal_hud_eval.py --models gpt-5.4,gpt-4o --all --max-concurrent 10
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ image = (
     .pip_install_from_requirements("requirements.txt")
     .pip_install("openai", "anthropic", "google-genai", "aiohttp")
     .add_local_dir("dragonbench", "/app/dragonbench", copy=True, ignore=_ignore_repo_noise)
-    .add_local_dir("eval", "/app/eval", copy=True, ignore=_ignore_repo_noise)
+    .add_local_dir("data/eval", "/app/data/eval", copy=True, ignore=_ignore_repo_noise)
     .add_local_file("tasks.py", "/app/tasks.py", copy=True)
     .add_local_file("requirements.txt", "/app/requirements.txt", copy=True)
 )

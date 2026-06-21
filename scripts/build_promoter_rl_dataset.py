@@ -15,7 +15,7 @@ from dragonbench.rl.promoter_dataset import DragonBenchPromoterDataset
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="eval/dragonbench_eval_v0.scoreable.jsonl")
+    parser.add_argument("--dataset", default="data/eval/dragonbench_eval_v0.scoreable.jsonl")
     parser.add_argument("--out-dir", default="runs/promoter_rl_dataset")
     parser.add_argument("--n-train", type=int, default=20)
     parser.add_argument("--n-eval", type=int, default=20)

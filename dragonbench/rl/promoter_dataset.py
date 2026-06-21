@@ -89,7 +89,7 @@ class DragonBenchPromoterDataset(DatasetConfig):
 
     def __init__(
         self,
-        dataset_path: str = "eval/dragonbench_eval_v0.scoreable.jsonl",
+        dataset_path: str = "data/eval/dragonbench_eval_v0.scoreable.jsonl",
         *,
         n_train: int = 20,
         n_eval: int = 20,

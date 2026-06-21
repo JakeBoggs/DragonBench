@@ -6,7 +6,7 @@ Create an 8-slide presentation for DragonBench, a benchmark for measuring AI mod
 
 Generation rule
 
-Do not invent data outside of this or extrapolate. Just follow the instructions.
+Do not invent data outside of this prompt or extrapolate. Just follow the instructions.
 
 Global visual style
 
@@ -120,7 +120,7 @@ Slide 5 - Benchmark results
 
 - Title: "Benchmark results"
 - Visual: grouped bar chart comparing the seven Modal full-run models across the five DragonBench categories plus overall score.
-- Data source: `reports/modal_full_run/modal_full_run_family_summary.csv` and `reports/modal_full_run/modal_full_run_summary.csv`; plot `mean_reward`, rounded to three decimals.
+- Use only the listed values; do not reference external files.
 - Task labels:
   - "Gene parsing"
   - "Promoter expression"
@@ -138,48 +138,50 @@ Slide 5 - Benchmark results
   - "GPT-5.4 mini": Gene parsing 0.138; Promoter expression 0.123; Protein folding 0.130; TF binding 0.511; RNA folding 0.000; Overall 0.180.
 - Include badge/panel: "DragonBench Score"
   - Top overall: "Opus 4.8 - 0.342 mean reward"
-  - Best by task: "Gene parsing: Gemini 3.1 Pro 0.633; Promoter expression: GPT-5.4 0.173; Protein folding: Opus 4.8 0.301; TF binding: GPT-4o 0.736; RNA folding: Gemini 3.1 Pro 0.178"
-  - Completion footnote: "Gemini 3.1 Pro completed 66/100 rows and GPT-5.5 completed 86/100 rows; all other models completed at least 99/100."
-- Main message: "Opus 4.8 leads overall, but task-level winners vary sharply; no general model is uniformly strong across DragonBench."
-- Goal: show uneven capability across tasks.
+- Main message: "DragonBench scores vary sharply by model and task."
+- Goal: show the benchmark leaderboard without extra interpretation.
 
 Slide 6 - Specialized models vs general models
 
 - Title: "Specialized models vs general models"
-- Subtitle: "AlphaFold is excellent today. General models are starting to catch up."
+- Subtitle: "Specialist confidence vs best general-model protein run"
 - Layout: side-by-side comparison.
+- Use only the listed values; do not reference external files.
+- Metric note: pLDDT is confidence; C-alpha lDDT is measured accuracy.
 - Left side:
-  - Label: "AlphaFold"
+  - Label: "AlphaFold DB"
   - Visual: polished folded protein ribbon.
   - Metric card:
-    - "C-alpha lDDT 0.94"
-    - "Backbone completeness 1.00"
-  - Caption: "Excellent accuracy"
+    - "Mean pLDDT 89.3/100"
+    - "Range 81.5-96.5"
+    - "20/20 reference structures"
+  - Caption: "Estimated confidence"
 - Right side:
-  - Label: "General LLM"
+  - Label: "Opus 4.8"
   - Visual: less refined protein structure output.
   - Metric card:
-    - "C-alpha lDDT 0.55"
-    - "Backbone completeness 0.82"
-  - Caption: "Room for improvement"
-- Takeaway ribbon: "Specialized systems dominate narrow tasks, but general models are improving fast."
-- Goal: contrast expert systems with general-purpose models.
+    - "C-alpha lDDT 0.301"
+    - "Backbone completeness 0.800"
+    - "Valid scored structures 16/20"
+  - Caption: "Best LLM protein run"
+- Takeaway ribbon: "General models now produce scoreable protein structures."
+- Goal: show the specialist-vs-general comparison with minimal interpretation.
 
 Slide 7 - Analysis
 
 - Title: "Analysis"
-- Subtitle: "General models are strongest on ranking and sequence tasks, while structure-heavy tasks still favor expert biological systems."
+- Subtitle: "General models are improving, but DragonBench still exposes major gaps."
 - Use four insight cards:
-  - "Sequence reasoning is improving" with DNA icon and mini bar chart.
-  - "Structure remains hard" with protein/fold icon and mini bar chart.
-  - "Specialized models still lead" with trophy/laurel icon and mini comparison chart.
-  - "There's a meaningful gap to experts" with target icon and small gap chart.
-- Goal: summarize the key analytical takeaways from the benchmark.
+  - "Structure gap" with protein/fold icon and mini chart: "Best LLM C-alpha lDDT 0.301"
+  - "RNA remains brittle" with RNA hairpin icon and mini chart: "Best score 0.178"
+  - "No uniform winner" with split bar icon: "Task leaders vary"
+  - "Catching-up signal" with checkmark/protein icon: "Opus 4.8 valid on 16/20 protein tasks"
+- Goal: show that general models are still behind, while noting early signs of progress.
 
 Slide 8 - So when dragons?
 
 - Title: "So when dragons?"
-- Subtitle: "A concrete timeline for dragon-level bio design"
+- Subtitle: "An estimated timeline for dragon-level engineering capabilities"
 - Visual: horizontal forecast timeline from 2030 to 2090 with three target milestones and soft uncertainty bands.
 - Milestones:
   - "Prototype drake" - median 2039, 80% interval 2037-2043; small dragon-coded vertebrate.

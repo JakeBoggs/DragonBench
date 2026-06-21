@@ -22,7 +22,7 @@ python scripts/build_anole_intron_training_records.py \
   --limit 240
 
 python scripts/build_intron_rl_dataset.py \
-  --out-dir fireworks_rft/intron/data/rl_non_eval \
+  --out-dir data/training/fireworks_rft/intron/rl_non_eval \
   --n-train 200 \
   --n-eval 40
 ```
@@ -50,7 +50,7 @@ from fireworks_rft.intron.test_intron_rft import (
     test_dragonbench_intron_rft,
 )
 
-row = json.loads(Path("fireworks_rft/intron/data/rl_non_eval/train.jsonl").read_text().splitlines()[0])
+row = json.loads(Path("data/training/fireworks_rft/intron/rl_non_eval/train.jsonl").read_text().splitlines()[0])
 eval_row = intron_dataset_adapter([row])[0]
 oracle = {"introns": eval_row.ground_truth["answer"]["introns"]}
 eval_row.messages.append(
@@ -92,7 +92,7 @@ Use `accounts/fireworks/models/gpt-oss-120b` for the intron RFT run. The
 evaluator id below is the normalized id for
 `test_intron_rft.py::test_dragonbench_intron_rft`. Do not pass the local JSONL
 path to `--dataset`; this CLI uses `--dataset` for existing Fireworks dataset
-ids. It infers `fireworks_rft/intron/data/rl_non_eval/train.jsonl` from the evaluator's
+ids. It infers `data/training/fireworks_rft/intron/rl_non_eval/train.jsonl` from the evaluator's
 `input_dataset` and uploads the adapted `EvaluationRow` JSONL.
 
 W&B observability requires `WANDB_API_KEY` and a W&B entity. The current default

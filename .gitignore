@@ -2,11 +2,12 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
-eval/smoke_answers.jsonl
-eval/demo_model_b_answers.jsonl
+data/generated/smoke_answers.jsonl
+data/generated/demo_model_b_answers.jsonl
 logs/
 .ep_tmp/
 runs/
+artifacts/
 
 # Local HUD state
 .hud/
